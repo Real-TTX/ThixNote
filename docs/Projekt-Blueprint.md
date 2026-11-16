@@ -1,6 +1,6 @@
 # Projekt-Blueprint: Desktop-App mit C#, Avalonia, eigenem Setup und CI/CD
 
-Das sind die wesentlichen Elemente aus QuickNote, als Vorlage für spätere Projekte. Die Dateien in diesem Repo sind die Referenzimplementierung. Die Pfade unten zeigen jeweils hin.
+Das sind die wesentlichen Elemente aus ThixNote, als Vorlage für spätere Projekte. Die Dateien in diesem Repo sind die Referenzimplementierung. Die Pfade unten zeigen jeweils hin.
 
 ---
 
@@ -33,7 +33,7 @@ docs/                        # u. a. dieser Blueprint
 - Die Logik steckt komplett in `Directory.Build.props` und wird über `-p:QnChannel=release|nightly|local -p:QnBuildNumber=<n>` gesteuert. Ohne Parameter entsteht automatisch `local-<datum>`.
 - `Version` (numerisch, z. B. `1.0.42`) und `InformationalVersion` (der Anzeige-String) sind getrennt. Windows braucht eine numerische Version, angezeigt wird der String.
 - `IncludeSourceRevisionInInformationalVersion=false`, sonst hängt .NET `+<commit-hash>` an.
-- Die Build-Nummer ist `github.run_number`, sie zählt automatisch hoch, und zwar über alle Branches gemeinsam. In QuickNote war der erste Release deshalb `1.0.2`, der erste Nightly `nightly-1`.
+- Die Build-Nummer ist `github.run_number`, sie zählt automatisch hoch, und zwar über alle Branches gemeinsam. In ThixNote (damals noch QuickNote) war der erste Release deshalb `1.0.2`, der erste Nightly `nightly-1`.
 - Die App liest ihre Version über `AssemblyInformationalVersionAttribute` (siehe `VersionInfo.cs`) und zeigt sie an. Das Setup macht es genauso.
 
 ## 3. Git-Regeln (gelten für alle Projekte)
@@ -54,7 +54,7 @@ docs/                        # u. a. dieser Blueprint
   - Die App fasst nur ihre eigenen Dateitypen an (Whitelist der Endungen).
   - Für geschützte Ressourcen gilt: Entsperrt-Status liegt im Business-Layer (`EncryptionSession`), nicht in der UI.
 - **Dialoge** stellt das Fenster als Delegates bereit (`Func<string, Task<bool>> Confirm`). Das ViewModel entscheidet nur, *wann* ein Dialog nötig ist, und bleibt so testbar.
-- **Isoliertes Testprofil** über eine Umgebungsvariable (`QUICKNOTE_PROFILE`). So lässt sich die App testen, ohne echte Einstellungen oder Daten anzufassen.
+- **Isoliertes Testprofil** über eine Umgebungsvariable (`THIXNOTE_PROFILE`). So lässt sich die App testen, ohne echte Einstellungen oder Daten anzufassen.
 
 ## 5. Avalonia-Muster
 
@@ -128,7 +128,7 @@ docs/                        # u. a. dieser Blueprint
 
 ## Stolperfalle GitHub Actions bei neuen Repos
 
-**Was bei QuickNote passiert ist:** Der Workflow war auf GitHub registriert und „active“, trotzdem hat kein Push einen Lauf ausgelöst. GitHub hat für die Commits nicht einmal eine Check-Suite angelegt. Erst nachdem Actions unter Settings → Actions → General freigegeben war, liefen neue Pushes los. Pushes von vorher holt GitHub nicht nach.
+**Was bei ThixNote passiert ist:** Der Workflow war auf GitHub registriert und „active“, trotzdem hat kein Push einen Lauf ausgelöst. GitHub hat für die Commits nicht einmal eine Check-Suite angelegt. Erst nachdem Actions unter Settings → Actions → General freigegeben war, liefen neue Pushes los. Pushes von vorher holt GitHub nicht nach.
 
 **Warum sich neue Repos unterschiedlich verhalten:**
 - **Organisation oder persönliches Konto:** Eine Organisation legt per Richtlinie fest, ob neue Repos Actions bekommen, etwa nur für ausgewählte Repos.

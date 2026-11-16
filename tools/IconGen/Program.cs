@@ -8,12 +8,12 @@ var logoDirectory = Path.Combine(root, "assets", "logo");
 var outputDirectory = Path.Combine(root, "assets", "icons");
 Directory.CreateDirectory(outputDirectory);
 
-var appIcon = new IconSet("quicknote", size => size <= 24 ? "quicknote-small.svg" : size <= 64 ? "quicknote-medium.svg" : "quicknote-full.svg");
-var documentIcon = new IconSet("quicknote-document", size => size <= 32 ? "quicknote-document-small.svg" : "quicknote-document-full.svg");
+var appIcon = new IconSet("thixnote", size => size <= 24 ? "thixnote-small.svg" : size <= 64 ? "thixnote-medium.svg" : "thixnote-full.svg");
+var documentIcon = new IconSet("thixnote-document", size => size <= 32 ? "thixnote-document-small.svg" : "thixnote-document-full.svg");
 
 foreach (var size in new[] { 16, 24, 32, 48, 64, 128, 256, 512, 1024 })
 {
-    File.WriteAllBytes(Path.Combine(outputDirectory, $"quicknote-{size}.png"), RenderPng(appIcon, size));
+    File.WriteAllBytes(Path.Combine(outputDirectory, $"thixnote-{size}.png"), RenderPng(appIcon, size));
 }
 
 foreach (var icon in new[] { appIcon, documentIcon })

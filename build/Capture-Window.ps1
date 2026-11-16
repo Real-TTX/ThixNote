@@ -2,10 +2,10 @@
 .SYNOPSIS
   Development helper: saves a screenshot of the main window of a running process (for UI checks without manual clicking).
 .EXAMPLE
-  ./build/Capture-Window.ps1 -ProcessName QuickNote -OutFile artifacts/screen.png -Width 1180 -Height 760
+  ./build/Capture-Window.ps1 -ProcessName ThixNote -OutFile artifacts/screen.png -Width 1180 -Height 760
 #>
 param(
-    [string] $ProcessName = 'QuickNote',
+    [string] $ProcessName = 'ThixNote',
     [Parameter(Mandatory)] [string] $OutFile,
     [int] $Width = 0,
     [int] $Height = 0

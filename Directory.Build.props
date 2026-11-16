@@ -31,7 +31,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Authors>Matthias</Authors>
-    <Product>QuickNote</Product>
+    <Product>ThixNote</Product>
     <Copyright>Copyright (c) Matthias</Copyright>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>

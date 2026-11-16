@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the macOS artifacts: QuickNote.app (portable zip) and a DMG installer.
+# Builds the macOS artifacts: ThixNote.app (portable zip) and a DMG installer.
 # Usage: build/build-macos.sh [local|nightly|release] [build-number] [osx-arm64|osx-x64]
 set -euo pipefail
 
@@ -18,31 +18,31 @@ esac
 
 ARTIFACTS="$ROOT/artifacts"
 PUBLISH_DIR="$ARTIFACTS/publish/$RUNTIME"
-APP_DIR="$ARTIFACTS/mac-$RUNTIME/QuickNote.app"
+APP_DIR="$ARTIFACTS/mac-$RUNTIME/ThixNote.app"
 rm -rf "$PUBLISH_DIR" "$ARTIFACTS/mac-$RUNTIME"
 mkdir -p "$PUBLISH_DIR" "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 
-echo "==> QuickNote $VERSION ($RUNTIME)"
-dotnet publish "$ROOT/src/QuickNote.App" -c Release -r "$RUNTIME" --self-contained true \
+echo "==> ThixNote $VERSION ($RUNTIME)"
+dotnet publish "$ROOT/src/ThixNote.App" -c Release -r "$RUNTIME" --self-contained true \
   -p:DebugType=None -p:DebugSymbols=false \
   -p:QnChannel="$CHANNEL" -p:QnBuildNumber="$BUILD_NUMBER" -p:QnBuildDate="$DATE" \
   -o "$PUBLISH_DIR"
 
 cp -R "$PUBLISH_DIR/." "$APP_DIR/Contents/MacOS/"
-cp "$ROOT/assets/icons/quicknote.icns" "$APP_DIR/Contents/Resources/QuickNote.icns"
-cp "$ROOT/assets/icons/quicknote-document.icns" "$APP_DIR/Contents/Resources/QuickNoteDocument.icns"
-chmod +x "$APP_DIR/Contents/MacOS/QuickNote"
+cp "$ROOT/assets/icons/thixnote.icns" "$APP_DIR/Contents/Resources/ThixNote.icns"
+cp "$ROOT/assets/icons/thixnote-document.icns" "$APP_DIR/Contents/Resources/ThixNoteDocument.icns"
+chmod +x "$APP_DIR/Contents/MacOS/ThixNote"
 
 cat > "$APP_DIR/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>QuickNote</string>
-  <key>CFBundleDisplayName</key><string>QuickNote</string>
-  <key>CFBundleIdentifier</key><string>app.quicknote</string>
-  <key>CFBundleExecutable</key><string>QuickNote</string>
-  <key>CFBundleIconFile</key><string>QuickNote</string>
+  <key>CFBundleName</key><string>ThixNote</string>
+  <key>CFBundleDisplayName</key><string>ThixNote</string>
+  <key>CFBundleIdentifier</key><string>app.thixnote</string>
+  <key>CFBundleExecutable</key><string>ThixNote</string>
+  <key>CFBundleIconFile</key><string>ThixNote</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$BUNDLE_VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
@@ -51,9 +51,9 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
-      <key>CFBundleTypeName</key><string>QuickNote verschlüsselte Notiz</string>
+      <key>CFBundleTypeName</key><string>ThixNote verschlüsselte Notiz</string>
       <key>CFBundleTypeExtensions</key><array><string>txts</string></array>
-      <key>CFBundleTypeIconFile</key><string>QuickNoteDocument</string>
+      <key>CFBundleTypeIconFile</key><string>ThixNoteDocument</string>
       <key>LSHandlerRank</key><string>Owner</string>
       <key>CFBundleTypeRole</key><string>Editor</string>
     </dict>
@@ -72,17 +72,17 @@ PLIST
 codesign --force --deep --sign - "$APP_DIR" 2>/dev/null || echo "codesign not available, skipping"
 
 # Portable: zipped .app
-PORTABLE="$ARTIFACTS/QuickNote-$VERSION-$RUNTIME-portable.zip"
+PORTABLE="$ARTIFACTS/ThixNote-$VERSION-$RUNTIME-portable.zip"
 rm -f "$PORTABLE"
-(cd "$(dirname "$APP_DIR")" && ditto -c -k --sequesterRsrc --keepParent QuickNote.app "$PORTABLE")
+(cd "$(dirname "$APP_DIR")" && ditto -c -k --sequesterRsrc --keepParent ThixNote.app "$PORTABLE")
 echo "Portable: $PORTABLE"
 
 # DMG: app + Applications shortcut
 DMG_STAGING="$ARTIFACTS/dmg-$RUNTIME"
-DMG="$ARTIFACTS/QuickNote-$VERSION-$RUNTIME.dmg"
+DMG="$ARTIFACTS/ThixNote-$VERSION-$RUNTIME.dmg"
 rm -rf "$DMG_STAGING" "$DMG"
 mkdir -p "$DMG_STAGING"
 cp -R "$APP_DIR" "$DMG_STAGING/"
 ln -s /Applications "$DMG_STAGING/Applications"
-hdiutil create -volname "QuickNote $VERSION" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG"
+hdiutil create -volname "ThixNote $VERSION" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG"
 echo "DMG:      $DMG"

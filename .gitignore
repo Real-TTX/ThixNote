@@ -426,7 +426,7 @@ test-results/
 *.dmg
 *.app
 # ...but not the Avalonia project folder whose name happens to end in ".App"
-!src/QuickNote.App/
+!src/ThixNote.App/
 
 # content below from: https://github.com/github/gitignore/blob/master/Global/macOS.gitignore
 # General
@@ -488,4 +488,4 @@ artifacts/
 .vs/
 
 # Setup downloaded from a GitHub release into the repo root for testing
-/QuickNote-Setup-*.exe
+/ThixNote-Setup-*.exe

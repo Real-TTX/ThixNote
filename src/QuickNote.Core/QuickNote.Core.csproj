@@ -1,9 +1,0 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>QuickNote.Core</RootNamespace>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Markdig" Version="*" />
-  </ItemGroup>
-</Project>

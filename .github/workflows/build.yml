@@ -52,7 +52,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - run: dotnet test tests/QuickNote.Core.Tests -c Release
+      - run: dotnet test tests/ThixNote.Core.Tests -c Release
 
   windows:
     name: Windows (${{ matrix.runtime }})
@@ -71,10 +71,10 @@ jobs:
         run: ./build/Build-Windows.ps1 -Channel '${{ needs.prepare.outputs.channel }}' -BuildNumber ${{ needs.prepare.outputs.build }} -Runtime ${{ matrix.runtime }}
       - uses: actions/upload-artifact@v4
         with:
-          name: QuickNote-windows-${{ matrix.runtime }}
+          name: ThixNote-windows-${{ matrix.runtime }}
           path: |
-            artifacts/QuickNote-Setup-*.exe
-            artifacts/QuickNote-*-portable.zip
+            artifacts/ThixNote-Setup-*.exe
+            artifacts/ThixNote-*-portable.zip
 
   macos:
     name: macOS (${{ matrix.runtime }})
@@ -94,10 +94,10 @@ jobs:
           build/build-macos.sh '${{ needs.prepare.outputs.channel }}' '${{ needs.prepare.outputs.build }}' '${{ matrix.runtime }}'
       - uses: actions/upload-artifact@v4
         with:
-          name: QuickNote-macos-${{ matrix.runtime }}
+          name: ThixNote-macos-${{ matrix.runtime }}
           path: |
-            artifacts/QuickNote-*.dmg
-            artifacts/QuickNote-*-portable.zip
+            artifacts/ThixNote-*.dmg
+            artifacts/ThixNote-*-portable.zip
 
   publish:
     name: Publish GitHub release
@@ -120,5 +120,5 @@ jobs:
           else
             tag="$version"; flags=(--prerelease)
           fi
-          gh release create "$tag" dist/* --target "${{ github.sha }}" --title "QuickNote $version" \
+          gh release create "$tag" dist/* --target "${{ github.sha }}" --title "ThixNote $version" \
             --generate-notes "${flags[@]}"

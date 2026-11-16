@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A3153199-5FD4-4A3C-A89A-D8533F71B31C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThixNote.App", "src\ThixNote.App\ThixNote.App.csproj", "{2C793D06-5CEB-4CD6-A92D-016441D59E42}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThixNote.Core", "src\ThixNote.Core\ThixNote.Core.csproj", "{306110A2-1438-4D43-B794-E4B9A4450243}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThixNote.Setup", "src\ThixNote.Setup\ThixNote.Setup.csproj", "{4DA46353-390F-431D-BFBC-BE269DEF299E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{71C0562E-6569-4CC7-ADD5-32C5827A5107}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThixNote.Core.Tests", "tests\ThixNote.Core.Tests\ThixNote.Core.Tests.csproj", "{29ACEB9F-6D53-421B-ADCC-E2620101239C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{605B478B-7439-4CFE-ACF6-199908A3EC7D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThixNote.IconGen", "tools\IconGen\ThixNote.IconGen.csproj", "{DF39FEE8-4771-4BF3-8817-6148113B8465}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2C793D06-5CEB-4CD6-A92D-016441D59E42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C793D06-5CEB-4CD6-A92D-016441D59E42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C793D06-5CEB-4CD6-A92D-016441D59E42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C793D06-5CEB-4CD6-A92D-016441D59E42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{306110A2-1438-4D43-B794-E4B9A4450243}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{306110A2-1438-4D43-B794-E4B9A4450243}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{306110A2-1438-4D43-B794-E4B9A4450243}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{306110A2-1438-4D43-B794-E4B9A4450243}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DA46353-390F-431D-BFBC-BE269DEF299E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DA46353-390F-431D-BFBC-BE269DEF299E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DA46353-390F-431D-BFBC-BE269DEF299E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DA46353-390F-431D-BFBC-BE269DEF299E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29ACEB9F-6D53-421B-ADCC-E2620101239C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29ACEB9F-6D53-421B-ADCC-E2620101239C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29ACEB9F-6D53-421B-ADCC-E2620101239C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29ACEB9F-6D53-421B-ADCC-E2620101239C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF39FEE8-4771-4BF3-8817-6148113B8465}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF39FEE8-4771-4BF3-8817-6148113B8465}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF39FEE8-4771-4BF3-8817-6148113B8465}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF39FEE8-4771-4BF3-8817-6148113B8465}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2C793D06-5CEB-4CD6-A92D-016441D59E42} = {A3153199-5FD4-4A3C-A89A-D8533F71B31C}
+		{306110A2-1438-4D43-B794-E4B9A4450243} = {A3153199-5FD4-4A3C-A89A-D8533F71B31C}
+		{4DA46353-390F-431D-BFBC-BE269DEF299E} = {A3153199-5FD4-4A3C-A89A-D8533F71B31C}
+		{29ACEB9F-6D53-421B-ADCC-E2620101239C} = {71C0562E-6569-4CC7-ADD5-32C5827A5107}
+		{DF39FEE8-4771-4BF3-8817-6148113B8465} = {605B478B-7439-4CFE-ACF6-199908A3EC7D}
+	EndGlobalSection
+EndGlobal
