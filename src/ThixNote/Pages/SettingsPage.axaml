@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mat="using:MatDesktop"
+             xmlns:controls="using:ThixNote.Controls"
+             x:Class="ThixNote.Pages.SettingsPage">
+  <!-- Settings in tabs: Allgemein | Updates | Erweitert. A switch applies at once (like macOS). -->
+  <Border Background="{DynamicResource Mat.Surface}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="28,22,28,28" MaxWidth="820" HorizontalAlignment="Left">
+        <TextBlock Text="Einstellungen" Theme="{StaticResource MatText.PageTitle}" />
+        <TextBlock x:Name="PolicyNote" Theme="{StaticResource MatText.Muted}" Margin="0,4,0,0" IsVisible="False" TextWrapping="Wrap"
+                   Text="Von deiner Organisation festgelegt: was eine Richtlinie bestimmt, ist hier ausgeschaltet." />
+        <controls:InfoBar x:Name="PageMessage" Margin="0,14,0,0" />
+
+        <TabControl x:Name="Tabs" Margin="0,12,0,0">
+          <!-- ===== General ===== -->
+          <TabItem x:Name="GeneralTabItem" Header="Allgemein">
+            <StackPanel>
+              <mat:MatSettingRow Title="Erscheinungsbild">
+                <ComboBox x:Name="ThemeChoice" MinWidth="170" AutomationProperties.Name="Erscheinungsbild">
+                  <ComboBoxItem Content="Wie das System" />
+                  <ComboBoxItem Content="Hell" />
+                  <ComboBoxItem Content="Dunkel" />
+                </ComboBox>
+              </mat:MatSettingRow>
+              <mat:MatSettingRow x:Name="NotesFolderRow" Title="Notizordner" Description="Jede Notiz ist eine Datei in diesem Ordner, Unterordner sind Ordner.">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button x:Name="ChangeFolderButton" Click="OnChangeFolderClick">
+                    <controls:IconLabel Icon="folder" Text="Ändern …" />
+                  </Button>
+                  <Button Click="OnOpenNotesFolderClick">
+                    <controls:IconLabel Icon="external" Text="Öffnen" />
+                  </Button>
+                </StackPanel>
+              </mat:MatSettingRow>
+              <mat:MatFormField controls:FormErrors.Field="NotesFolder" Margin="0" />
+              <mat:MatSettingRow Title="Zeilenumbruch" Description="Lange Zeilen brechen am Rand des Editors um (wie in Notepad).">
+                <ToggleSwitch x:Name="WordWrapSwitch" OnContent="" OffContent="" AutomationProperties.Name="Zeilenumbruch" />
+              </mat:MatSettingRow>
+              <mat:MatSettingRow x:Name="ZoomRow" Title="Textgröße im Editor" BorderThickness="0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button x:Name="ZoomOutButton" Theme="{StaticResource MatButton.Icon}" Click="OnZoomOutClick" AutomationProperties.Name="Verkleinern">
+                    <mat:MatIcon Icon="zoom-out" Size="16" />
+                  </Button>
+                  <TextBlock x:Name="ZoomText" MinWidth="48" TextAlignment="Center" VerticalAlignment="Center" />
+                  <Button x:Name="ZoomInButton" Theme="{StaticResource MatButton.Icon}" Click="OnZoomInClick" AutomationProperties.Name="Vergrößern">
+                    <mat:MatIcon Icon="zoom-in" Size="16" />
+                  </Button>
+                  <Button Click="OnZoomResetClick">
+                    <controls:IconLabel Icon="restore" Text="100 %" />
+                  </Button>
+                </StackPanel>
+              </mat:MatSettingRow>
+            </StackPanel>
+          </TabItem>
+
+          <!-- ===== Updates ===== -->
+          <TabItem x:Name="UpdatesTabItem" Header="Updates">
+            <StackPanel>
+              <Border Theme="{StaticResource MatCard}" MaxWidth="560" HorizontalAlignment="Left" Margin="0,0,0,14">
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Text="Installiert" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                  <TextBlock Grid.Column="1" x:Name="InstalledVersionText" Margin="0,4" />
+                  <TextBlock Grid.Row="1" Text="Kanal" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                  <TextBlock Grid.Row="1" Grid.Column="1" x:Name="ChannelText" Margin="0,4" />
+                  <TextBlock Grid.Row="2" Text="Zuletzt geprüft" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" x:Name="LastCheckText" Margin="0,4" />
+                </Grid>
+              </Border>
+              <controls:InfoBar x:Name="UpdateMessage" />
+              <ProgressBar x:Name="UpdateProgress" Theme="{StaticResource MatProgress}" IsVisible="False" Maximum="1" Margin="0,0,0,12" MaxWidth="560" HorizontalAlignment="Stretch" />
+              <controls:ActionBar Margin="0,0,0,10">
+                <Button x:Name="CheckUpdateButton" Click="OnCheckUpdateClick">
+                  <controls:IconLabel Icon="refresh" Text="Nach Updates suchen" />
+                </Button>
+                <Button x:Name="InstallUpdateButton" Theme="{StaticResource MatButton.Primary}" Click="OnInstallUpdateClick" IsVisible="False">
+                  <controls:IconLabel Icon="download" Text="Jetzt installieren und neu starten" />
+                </Button>
+                <Button Click="OnReleasePageClick">
+                  <controls:IconLabel Icon="external" Text="Versionen auf GitHub" />
+                </Button>
+              </controls:ActionBar>
+              <mat:MatSettingRow Title="Automatisch nach Updates suchen" Description="Beim Start und alle 6 Stunden, im eigenen Kanal (Release oder Nightly).">
+                <ToggleSwitch x:Name="CheckUpdatesSwitch" OnContent="" OffContent="" AutomationProperties.Name="Automatisch nach Updates suchen" />
+              </mat:MatSettingRow>
+              <mat:MatSettingRow Title="Updates automatisch installieren" BorderThickness="0"
+                                 Description="Neue Versionen werden im Hintergrund geladen und installiert, wenn du ThixNote schließt – nie mitten beim Schreiben.">
+                <ToggleSwitch x:Name="AutoInstallSwitch" OnContent="" OffContent="" AutomationProperties.Name="Updates automatisch installieren" />
+              </mat:MatSettingRow>
+            </StackPanel>
+          </TabItem>
+
+          <!-- ===== Advanced ===== -->
+          <TabItem x:Name="AdvancedTabItem" Header="Erweitert">
+            <StackPanel>
+              <mat:MatSettingRow Title="Datenordner" x:Name="DataFolderRow">
+                <Button Click="OnOpenDataFolderClick">
+                  <controls:IconLabel Icon="external" Text="Öffnen" />
+                </Button>
+              </mat:MatSettingRow>
+              <mat:MatSettingRow Title="Protokolle" x:Name="LogFolderRow" BorderThickness="0">
+                <Button Click="OnOpenLogFolderClick">
+                  <controls:IconLabel Icon="external" Text="Öffnen" />
+                </Button>
+              </mat:MatSettingRow>
+              <TextBlock Theme="{StaticResource MatText.Muted}" Margin="0,16,0,0" TextWrapping="Wrap"
+                         Text="Administratoren können ThixNote per Richtlinie einschränken (LockConfiguration, DisableUpdates) – unter Windows in HKLM\SOFTWARE\Policies\ThixNote, unter macOS per Konfigurationsprofil info.schmoldt.thixnote." />
+            </StackPanel>
+          </TabItem>
+        </TabControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+</UserControl>

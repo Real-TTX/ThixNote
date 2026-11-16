@@ -18,7 +18,7 @@ public static class QuickNoteMigration
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), FormerName);
 
     /// <summary>Returns the taken over settings, or null if QuickNote left no settings behind.</summary>
-    public static AppSettings? TryImport() => TryImport(FormerSettingsPath, FormerNotesFolder, NoteLibrary.DefaultNotesFolder);
+    public static AppSettings? TryImport() => TryImport(FormerSettingsPath, FormerNotesFolder, Infrastructure.AppPaths.DefaultNotesFolder);
 
     public static AppSettings? TryImport(string formerSettingsPath, string formerNotesFolder, string notesFolder)
     {
@@ -33,12 +33,12 @@ public static class QuickNoteMigration
 
         if (TryMoveFolder(formerNotesFolder, notesFolder))
         {
-            settings?.ReplaceFolder(formerNotesFolder, notesFolder);
+            settings = settings?.ReplaceFolder(formerNotesFolder, notesFolder);
         }
         else if (settings is not null && Directory.Exists(formerNotesFolder))
         {
             // Moving failed (e.g. a file is in use): keep working on the old folder rather than hiding the notes.
-            settings.NotesFolder = formerNotesFolder;
+            settings = settings with { NotesFolder = formerNotesFolder };
         }
 
         return settings;
@@ -63,23 +63,26 @@ public static class QuickNoteMigration
         }
     }
 
-    private static void ReplaceFolder(this AppSettings settings, string formerFolder, string folder)
+    private static AppSettings ReplaceFolder(this AppSettings settings, string formerFolder, string folder)
     {
         string Map(string path) => path.StartsWith(formerFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
             ? folder + path[formerFolder.Length..]
             : path;
 
-        settings.NotesFolder = folder;
-        settings.Favorites = settings.Favorites.Select(Map).ToList();
-        settings.OpenFiles = settings.OpenFiles.Select(Map).ToList();
-        settings.ActiveFile = settings.ActiveFile is null ? null : Map(settings.ActiveFile);
+        return settings with
+        {
+            NotesFolder = folder,
+            Favorites = settings.Favorites.Select(Map).ToList(),
+            OpenFiles = settings.OpenFiles.Select(Map).ToList(),
+            ActiveFile = settings.ActiveFile is null ? null : Map(settings.ActiveFile),
+        };
     }
 
     private static AppSettings? TryRead(string path)
     {
         try
         {
-            return File.Exists(path) ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path)) : null;
+            return File.Exists(path) ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), Infrastructure.SettingsStore.SerializerOptions) : null;
         }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         {

@@ -1,0 +1,29 @@
+<mat:MatWindow xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:mat="using:MatDesktop"
+               x:Class="ThixNote.MainWindow"
+               Title="ThixNote" Width="1180" Height="760" MinWidth="420" MinHeight="320"
+               WindowStartupLocation="CenterScreen">
+  <!--
+    The one window of ThixNote, in MatDesktop's chrome (like ThixClip): the title bar (DESK-03: logo and word mark, the search
+    in the middle, the caption buttons on Windows, the traffic lights on macOS), the menu (DESK-04: Alle Notizen, Favoriten,
+    the folders, Settings below a line; at its foot "Neuer Ordner" and the notes folder, the version = About, the fold to a
+    rail) and the page (notes, settings, about).
+    Narrower than 900 px ThixNote is a small editor like Notepad: no menu, the tabs in the title bar, the list over the editor.
+  -->
+  <Grid RowDefinitions="Auto,*">
+    <mat:MatTitleBar x:Name="TitleBar" AppName="ThixNote">
+      <mat:MatTitleBar.Center>
+        <ContentControl x:Name="TitleCenter" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center">
+          <TextBox x:Name="SearchBox" Theme="{StaticResource MatSearchBox}" MaxWidth="620" HorizontalAlignment="Stretch"
+                   Watermark="Notizen durchsuchen" AutomationProperties.Name="Notizen durchsuchen" />
+        </ContentControl>
+      </mat:MatTitleBar.Center>
+    </mat:MatTitleBar>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+      <mat:MatNav x:Name="Sidebar" AppName="ThixNote" />
+      <ContentControl Grid.Column="1" x:Name="PageHost" />
+    </Grid>
+  </Grid>
+</mat:MatWindow>

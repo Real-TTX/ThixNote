@@ -1,39 +1,55 @@
 <Project>
-  <!--
-    Versioning (see README):
-      Release (main):  <major>.<minor>.<build>-<builddate>   e.g. 1.0.42-20261114
-      Nightly (dev):   nightly-<build>-<builddate>           e.g. nightly-42-20261114
-      Local:           local-<builddate>                     e.g. local-20261114
-    CI passes -p:QnChannel=release|nightly and -p:QnBuildNumber=<run number>.
-  -->
-  <PropertyGroup>
-    <QnChannel Condition="'$(QnChannel)' == ''">local</QnChannel>
-    <QnBuildNumber Condition="'$(QnBuildNumber)' == ''">0</QnBuildNumber>
-    <QnBuildDate Condition="'$(QnBuildDate)' == ''">$([System.DateTime]::UtcNow.ToString('yyyyMMdd'))</QnBuildDate>
-    <QnMajorMinor>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</QnMajorMinor>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(QnChannel)' == 'release'">
-    <Version>$(QnMajorMinor).$(QnBuildNumber)</Version>
-    <InformationalVersion>$(QnMajorMinor).$(QnBuildNumber)-$(QnBuildDate)</InformationalVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(QnChannel)' == 'nightly'">
-    <Version>0.0.$(QnBuildNumber)</Version>
-    <InformationalVersion>nightly-$(QnBuildNumber)-$(QnBuildDate)</InformationalVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(QnChannel)' == 'local'">
-    <Version>0.0.0</Version>
-    <InformationalVersion>local-$(QnBuildDate)</InformationalVersion>
-  </PropertyGroup>
 
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Authors>Matthias</Authors>
-    <Product>ThixNote</Product>
-    <Copyright>Copyright (c) Matthias</Copyright>
-    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Company>Matthias Schmoldt</Company>
+    <Product>ThixNote</Product>
+    <Authors>Matthias Schmoldt</Authors>
+    <Copyright>© Matthias Schmoldt</Copyright>
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
   </PropertyGroup>
+
+  <!--
+    Versioning (single source of truth: Major/Minor below). CI sets Channel / BuildNumber / BuildDate:
+      release : <major>.<minor>.<build>-<date>   e.g. 1.0.42-20261116   (branch main)
+      nightly : nightly-<build>-<date>          e.g. nightly-43-20261116 (branch dev)
+      local   : local-<date>                    e.g. local-20261116      (every local build)
+    The build number is the GitHub run number and increases with every build; the update check compares it.
+  -->
+  <PropertyGroup>
+    <ThixNoteMajor>1</ThixNoteMajor>
+    <ThixNoteMinor>1</ThixNoteMinor>
+
+    <BuildNumber Condition="'$(BuildNumber)' == ''">0</BuildNumber>
+    <Channel Condition="'$(Channel)' == ''">local</Channel>
+    <BuildDate Condition="'$(BuildDate)' == ''">$([System.DateTime]::UtcNow.ToString('yyyyMMdd'))</BuildDate>
+
+    <Version>$(ThixNoteMajor).$(ThixNoteMinor).$(BuildNumber)</Version>
+    <AssemblyVersion>$(ThixNoteMajor).$(ThixNoteMinor).0.0</AssemblyVersion>
+    <FileVersion>$(ThixNoteMajor).$(ThixNoteMinor).$(BuildNumber).0</FileVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Channel)' == 'release'">
+    <InformationalVersion>$(ThixNoteMajor).$(ThixNoteMinor).$(BuildNumber)-$(BuildDate)</InformationalVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Channel)' == 'nightly'">
+    <InformationalVersion>nightly-$(BuildNumber)-$(BuildDate)</InformationalVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Channel)' == 'local'">
+    <InformationalVersion>local-$(BuildDate)</InformationalVersion>
+  </PropertyGroup>
+
+  <!-- The running program needs channel and build number (update check, about page). -->
+  <ItemGroup>
+    <AssemblyMetadata Include="ThixNoteChannel" Value="$(Channel)" />
+    <AssemblyMetadata Include="ThixNoteBuildNumber" Value="$(BuildNumber)" />
+    <AssemblyMetadata Include="ThixNoteRepository" Value="Real-TTX/ThixNote" />
+  </ItemGroup>
+
 </Project>

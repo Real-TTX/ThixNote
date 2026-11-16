@@ -2,40 +2,67 @@
 
 # ThixNote
 
-Eine bewusst einfache Notiz-App für Windows und macOS (C#, Avalonia UI), optisch angelehnt an Todoist. Breit gezogen ist sie eine kleine Notizbibliothek. Schmal gezogen wird sie zum Editor mit Tabs, ähnlich wie Notepad.
+Eine bewusst einfache Notiz-App für Windows und macOS (C#, Avalonia mit MatDesktop). Jede Notiz ist eine normale Datei. Breit gezogen ist ThixNote eine kleine Notizbibliothek, schmal gezogen ein Editor mit Tabs wie Notepad. Aufbau, Setup und Updates folgen ThixClip und den Desktop-Regeln von MatDesign (DESK, SETUP).
 
-![ThixNote mit Notizbibliothek und Markdown-Vorschau](docs/images/thixnote-vorschau.png)
+![ThixNote mit Notizbibliothek und Editor](docs/images/main-notes-light.png)
 
 ## Screenshots
 
-| Bearbeiten | Kennwortgeschützte Notiz |
+| Markdown-Vorschau | Dunkel |
 |---|---|
-| ![Markdown-Editor mit Tabs](docs/images/thixnote-editor.png) | ![Gesperrte .txts-Notiz mit Kennwortabfrage](docs/images/thixnote-verschluesselt.png) |
+| ![Vorschau einer Notiz mit Tabelle und Aufgaben](docs/images/main-preview-light.png) | ![ThixNote im dunklen Erscheinungsbild](docs/images/main-notes-dark.png) |
 
-| Schmales Fenster | Setup (Windows) |
+| Schmal wie Notepad | Kennwortgeschützte Notiz |
 |---|---|
-| ![Kompakter Editor wie Notepad](docs/images/thixnote-kompakt.png) | ![Installer von ThixNote](docs/images/thixnote-setup.png) |
+| ![Kompakter Editor: Tabs in der Titelleiste, Formatierungsleiste, Text, Statusleiste](docs/images/main-compact-light.png) | ![Gesperrte .txts-Notiz mit Kennwortabfrage](docs/images/main-locked-light.png) |
+
+| Einstellungen | Setup (Windows) |
+|---|---|
+| ![Einstellungen mit Erscheinungsbild, Notizordner, Zeilenumbruch und Textgröße](docs/images/main-settings-light.png) | ![Optionen des Setups](docs/images/setup-options-light.png) |
+
+Alle Bilder in [`docs/images`](docs/images) gibt es hell und dunkel. Sie entstehen mit `ThixNote --snapshot` aus Beispielnotizen.
 
 ## Installation
 
-Fertige Builds gibt es unter [Releases](https://github.com/Real-TTX/ThixNote/releases):
+Fertige Builds liegen unter [Releases](https://github.com/Real-TTX/ThixNote/releases):
 
-- **Windows:** `ThixNote-Setup-<version>-win-x64.exe` installiert pro Benutzer, ohne Adminrechte. Alternativ das Portable-Zip.
-- **macOS:** DMG für Apple Silicon (`osx-arm64`) und Intel (`osx-x64`), alternativ das Portable-Zip.
+- **Windows:** `ThixNoteSetup.exe` installiert ThixNote für dein Benutzerkonto, ohne Administratorrechte, nach `%LocalAppData%\Programs\ThixNote`. Die Exe ist zugleich ihr eigenes Setup: Starten heißt installieren oder aktualisieren, „Installierte Apps“ ruft die Deinstallation auf.
+- **macOS:** `ThixNote-macOS-arm64.dmg` (Apple Silicon) oder `ThixNote-macOS-x64.dmg` (Intel) öffnen und ThixNote in „Programme“ ziehen.
+- Oder über **ThixLauncher**, der die Thix-Apps installiert und aktuell hält.
 
-Nightlies aus dem Branch `dev` stehen dort als Pre-Release.
+Ohne Fenster (für Skripte, Intune und Ähnliches):
+
+| Befehl | Wirkung |
+|---|---|
+| `ThixNoteSetup.exe --quiet` | installiert mit den Standardoptionen |
+| `ThixNoteSetup.exe --update` | installiert oder aktualisiert still, mit `--restart` startet ThixNote danach |
+| `ThixNote.exe --uninstall [--quiet]` | deinstalliert; die Notizen bleiben immer erhalten |
+
+### Updates
+
+Jeder Kanal hat ein mitlaufendes Release: `release-channel` (Branch `main`) und `nightly-channel` (Branch `dev`). Darin liegt `thixnote-update.json` mit Version, Build-Nummer und SHA-256 jedes Pakets. ThixNote prüft kurz nach dem Start und danach alle 6 Stunden, lädt eine neue Version im Hintergrund und prüft die Prüfsumme.
+
+**Installiert wird beim Schließen von ThixNote**, nie mitten beim Schreiben. Wer nicht warten will, nimmt „Jetzt installieren und neu starten“ unter Einstellungen › Updates; ThixNote öffnet danach wieder mit allen Tabs. Lokale Builds aktualisieren sich nie selbst.
+
+Administratoren können per Richtlinie eingreifen: Windows `HKLM\SOFTWARE\Policies\ThixNote` (DWORD 1), macOS Konfigurationsprofil `info.schmoldt.thixnote`:
+
+- `LockConfiguration` sperrt die Einstellungen.
+- `DisableUpdates` schaltet die Updates ab.
 
 ## So funktioniert es
 
-- **Notizen sind normale Dateien** in `Dokumente/ThixNote`. Der Dateiname ist der Titel, Unterordner sind Ordner. Es gibt keine Datenbank und keinen versteckten Index.
+- **Notizen sind normale Dateien** in `Dokumente/ThixNote` (in den Einstellungen änderbar). Der Dateiname ist der Titel, Unterordner sind Ordner. Es gibt keine Datenbank.
   - `.md`: Markdown (Standard für neue Notizen)
   - `.txt`: reiner Text
   - `.txts`: mit Kennwort verschlüsselt (AES-256-GCM, Schlüssel per PBKDF2-SHA256 mit 600 000 Iterationen)
-- **Wie Notepad nutzbar:** Doppelklick auf eine `.txts`, `.md` oder `.txt` öffnet sie in ThixNote. Ist ThixNote schon offen, kommt sie als neuer Tab ins laufende Fenster. Drag & Drop auf das Fenster geht auch.
-- **Tabs:** mehrere Notizen gleichzeitig. Offene Tabs werden beim nächsten Start wiederhergestellt. Verschlüsselte Tabs sind dann wieder gesperrt.
-- **Schmales Fenster** (unter 900 px): Seitenleiste und Notizliste verschwinden, nur Tabs und Editor bleiben. Über ☰ klappt die Bibliothek als Overlay auf.
-- **Kennwortschutz:** Beim Öffnen einer `.txts` fragt ThixNote im Tab nach dem Kennwort. Das Kennwort selbst wird nie gespeichert, nur der abgeleitete Schlüssel bleibt im Arbeitsspeicher, solange die Notiz entsperrt ist.
-- Automatisches Speichern, Favoriten, Suche, Markdown-Vorschau, Export als Markdown, HTML oder Text. Löschen verschiebt in den Papierkorb.
+- **Der Titel steht im Tab, nicht im Text.** Umbenennen geht mit F2 oder einem Doppelklick auf den Tab. Eine neue Notiz heißt nach ihrer ersten Zeile, bis du sie selbst umbenennst.
+- **Aufgebaut wie Notepad:** Tabs, darunter eine Formatierungsleiste über die ganze Breite, dann nur der Text, unten die Statusleiste mit Zeile, Spalte, Wörtern, Zeichen, Typ und Zoom.
+  - Die Formatierungsleiste bietet Überschrift, Fett, Kursiv, Durchgestrichen, Listen, Aufgaben, Link und Code. Bei `.txt` ist sie ausgegraut.
+- **Schmales Fenster** (unter 900 px): Das Menü verschwindet, die Tabs wandern in die Titelleiste, die Notizliste öffnet sich über dem Editor (Strg+F oder das Seitenleisten-Symbol).
+- **Wie Notepad nutzbar:** Doppelklick auf `.txts`, `.md` oder `.txt` öffnet die Datei in ThixNote. Läuft ThixNote schon, kommt sie als neuer Tab ins offene Fenster. Drag & Drop geht auch.
+- **Tabs** werden beim nächsten Start wiederhergestellt. Verschlüsselte Tabs sind dann wieder gesperrt.
+- **Kennwortschutz:** Eine `.txts` fragt im Tab nach dem Kennwort. Das Kennwort selbst wird nie gespeichert, nur der abgeleitete Schlüssel bleibt im Arbeitsspeicher, solange die Notiz entsperrt ist.
+- Außerdem: automatisches Speichern, Favoriten, Ordner, Suche über alle Notizen, Markdown-Vorschau, Export als Markdown, HTML oder Text, Erscheinungsbild hell, dunkel oder wie das System. Löschen verschiebt in den Papierkorb.
 
 ### Tastenkürzel (macOS: ⌘ statt Strg)
 
@@ -46,11 +73,17 @@ Nightlies aus dem Branch `dev` stehen dort als Pre-Release.
 | Strg+S | Speichern (passiert auch automatisch) |
 | Strg+W | Tab schließen |
 | Strg+Tab / Strg+Umschalt+Tab | Nächster / vorheriger Tab |
+| F2 | Notiz umbenennen |
 | Strg+F / Strg+K | Suchen |
 | Strg+E | Vorschau / Bearbeiten |
-| Strg+L | Verschlüsselte Notiz sperren |
-| Strg+D | Favorit |
 | Strg+B / Strg+I | Fett / Kursiv |
+| Strg+D | Favorit |
+| Strg+L | Verschlüsselte Notiz sperren |
+| Strg+Plus / Strg+Minus / Strg+0 | Text größer / kleiner / Originalgröße |
+| Strg+1 / Strg+2 | Alle Notizen / Favoriten |
+| Strg+Umschalt+L | Notizliste ein- und ausblenden |
+| Strg+Umschalt+B | Menü einklappen |
+| Strg+, | Einstellungen |
 
 ## Umstieg von QuickNote
 
@@ -59,68 +92,44 @@ ThixNote hieß früher QuickNote. Das alte Repository wird nicht weitergeführt.
 - Beim ersten Start übernimmt ThixNote die Einstellungen aus `AppData/QuickNote` und verschiebt `Dokumente/QuickNote` nach `Dokumente/ThixNote`. Favoriten und offene Tabs zeigen danach auf die neuen Pfade. Ein selbst gewählter Notizordner bleibt, wo er ist.
 - Das Setup entfernt eine alte QuickNote-Installation (Programmdateien, Verknüpfungen, Registry-Einträge). Die Notizen bleiben dabei unberührt.
 - Verschlüsselte `.txts`-Dateien behalten ihre Formatkennung `QNSEC1` und lassen sich weiter öffnen.
+- QuickNote hatte noch keine Updates: Die erste ThixNote-Version muss einmal von Hand installiert werden.
 
 ## Aufbau
 
 | Projekt | Inhalt |
 |---|---|
-| `src/ThixNote.Core` | Modelle (reine Daten) und Business-Layer, nur statische Klassen: `NoteLibrary`, `NoteContent`, `NoteEncryption`, `EncryptionSession`, `AccessGuard`, `NoteExporter`, `SettingsStore`, `QuickNoteMigration` |
-| `src/ThixNote.App` | Avalonia-UI (MVVM mit CommunityToolkit.Mvvm). UI und Modelle greifen nie direkt auf Dateien zu |
-| `src/ThixNote.Setup` | Eigener, gestalteter Windows-Installer (Avalonia). Bettet die App ein, installiert pro Benutzer, registriert `.txts` |
-| `tests/ThixNote.Core.Tests` | Unit-Tests für Business-Layer und Berechtigungen |
-| `tools/IconGen` | Erzeugt PNG, ICO und ICNS aus den Logo-SVGs (je Größe die passende Detailstufe) |
-| `assets/logo` | App-Logo in drei Detailstufen, Wordmark und Datei-Icon für `.txts` |
+| `src/ThixNote.Core` | Modelle, Business-Layer (statische Klassen: `NoteLibrary`, `NoteContent`, `NoteEncryption`, `AccessGuard`, `NoteExporter`, `SettingsService`, `AccessPolicy`, `InstallService`, `UpdateService`, `QuickNoteMigration` …), Infrastruktur (`AppPaths`, `AppInfo`, `SettingsStore`, `Log`, `ProblemReports`) |
+| `src/ThixNote` | Avalonia-App mit MatDesktop: Hauptfenster, Seiten (Notizen, Einstellungen, Über), Dialoge, Setup, Selbsttest, Snapshots |
+| `src/ThixNote/MatDesktop` | Kopie des Desktop-Toolkits aus MatDesign, wird hier nie bearbeitet |
+| `tests/ThixNote.Tests` | Business-Layer, Installation an Testorten, Update-Regeln, Oberfläche headless |
+| `tools/IconGen` | Erzeugt PNG, ICO und ICNS aus den Logo-SVGs |
+| `scripts/` | `package-macos.sh` (App-Bundle, Update-Zip, DMG), `Capture-Window.ps1` (Screenshot eines echten Fensters) |
 
-Berechtigungen prüft `AccessGuard` immer im Business-Layer. Beispiele: Verschlüsselte Notizen lassen sich nur entsperrt lesen, schreiben oder exportieren. ThixNote fasst nur `.md`, `.txt` und `.txts` an. Schreibgeschützte Dateien bleiben unangetastet.
+## Bauen
+
+```bash
+dotnet build ThixNote.slnx
+dotnet test tests/ThixNote.Tests
+dotnet run --project src/ThixNote
+```
+
+- Eigene Instanz mit eigenen Einstellungen und Notizen, ohne die echten anzufassen: Umgebungsvariable `THIXNOTE_DATA_DIR=<ordner>` setzen (Notizen liegen dann in `<ordner>/Notizen`).
+- Windows-Build wie in der CI: `dotnet publish src/ThixNote -c Release -r win-x64 -o publish`. Ergebnis ist eine getrimmte Single-File-Exe von etwa 35 MB. Mit `publish\ThixNote.exe --self-test bericht.txt` prüft sie sich selbst.
+- Bilder für README und MatDesign: `dotnet run --project src/ThixNote -- --snapshot docs/images`.
+- Icons neu erzeugen: `dotnet run --project tools/IconGen -- .`
 
 ## Versionierung
 
 | Kanal | Branch | Format | Beispiel |
 |---|---|---|---|
-| Release | `main` | `<major>.<minor>.<build>-<builddate>` | `1.0.42-20261114` |
-| Nightly | `dev` | `nightly-<build>-<builddate>` | `nightly-42-20261114` |
-| Local | alles andere | `local-<builddate>` | `local-20261114` |
+| Release | `main` | `<major>.<minor>.<build>-<builddate>` | `1.1.42-20261116` |
+| Nightly | `dev` | `nightly-<build>-<builddate>` | `nightly-42-20261116` |
+| Local | alles andere | `local-<builddate>` | `local-20261116` |
 
-`major.minor` steht in der Datei `VERSION`, die Build-Nummer ist die Nummer des GitHub-Actions-Laufs. Die Logik dazu liegt in `Directory.Build.props`.
-
-## Bauen
-
-```bash
-dotnet test tests/ThixNote.Core.Tests
-dotnet run --project src/ThixNote.App
-```
-
-Windows (Setup und Portable-Zip landen in `artifacts/`):
-
-```powershell
-./build/Build-Windows.ps1                                    # local
-./build/Build-Windows.ps1 -Channel nightly -BuildNumber 42   # wie CI auf dev
-```
-
-macOS (`.app`, Portable-Zip, DMG):
-
-```bash
-build/build-macos.sh local 0 osx-arm64
-```
-
-Weitere Werkzeuge:
-
-- Icons neu erzeugen: `dotnet run --project tools/IconGen -- .`
-- Isoliertes Testprofil, ohne die echten Einstellungen und Notizen anzufassen: Umgebungsvariable `THIXNOTE_PROFILE=<ordner>` setzen.
-- Screenshot eines laufenden Fensters für UI-Checks und für die Bilder in `docs/images`: `build/Capture-Window.ps1` (schneidet auf den sichtbaren Fensterrahmen zu). Für die README-Bilder mit `THIXNOTE_PROFILE` und Beispielnotizen arbeiten, damit keine echten Notizen oder Pfade zu sehen sind.
-
-## CI/CD
-
-`.github/workflows/build.yml` läuft bei jedem Push und Pull Request:
-
-1. Tests
-2. Windows: Setup und Portable
-3. macOS: arm64 und x64, jeweils DMG und Portable
-
-Bei Pushes auf `main` entsteht ein GitHub-Release, bei Pushes auf `dev` ein Pre-Release (Nightly).
+`major.minor` steht in `Directory.Build.props`, die Build-Nummer ist die Laufnummer der GitHub-Action `desktop`. Der Update-Check vergleicht sie.
 
 ## Hinweise
 
 - macOS: Das DMG ist nur ad-hoc signiert (kein Apple-Developer-Konto). Beim ersten Start Rechtsklick auf die App und „Öffnen“ wählen.
 - Windows: Setup und Exe sind nicht signiert. SmartScreen kann beim ersten Start nachfragen.
-- Notizen aus der allerersten Version (damals noch QuickNote, GUID-Dateinamen) werden beim Start automatisch nach ihrem Titel umbenannt. Verschlüsselte alte Notizen werden beim ersten Entsperren umgestellt.
+- Abstürze und Hänger landen als Bericht im Protokollordner und werden beim nächsten Start angezeigt.

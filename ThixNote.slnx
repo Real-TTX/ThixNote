@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ThixNote.Core/ThixNote.Core.csproj" />
+    <Project Path="src/ThixNote/ThixNote.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ThixNote.Tests/ThixNote.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/IconGen/ThixNote.IconGen.csproj" />
+  </Folder>
+</Solution>

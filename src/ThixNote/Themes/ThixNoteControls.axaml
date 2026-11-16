@@ -1,0 +1,115 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    What only ThixNote has, in MatDesktop's look: the tabs of the open notes, the editor without a frame (like Notepad), the
+    formatting bar and the status bar. No colour of its own: every value is a MatDesktop resource (DESK-02), so light and
+    dark follow by themselves. The note list uses MatDesktop's MatList with MatCardRow.
+  -->
+
+  <!-- ===== Tabs: one per open note; the chosen one stands on the surface of the editor with the accent line below ===== -->
+  <Style Selector="ListBox.tabs">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Hidden" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem">
+    <Setter Property="Padding" Value="12,0,6,0" />
+    <Setter Property="Margin" Value="0,0,2,0" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Mat.Radius}" />
+    <Setter Property="Foreground" Value="{DynamicResource Mat.TextMuted}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Mat.Radius}" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Mat.Surface2}" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource Mat.Text}" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Mat.AccentSoft}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mat.Accent}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Mat.AccentSoftStrong}" />
+  </Style>
+  <!-- the close button of a tab: small, quiet until the tab is chosen or under the pointer -->
+  <Style Selector="Button.tabclose">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
+  <Style Selector="ListBoxItem:selected Button.tabclose, ListBoxItem:pointerover Button.tabclose">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <!-- ===== The editor: the text area itself, without a frame, a focus line or a background of its own (Notepad) ===== -->
+  <Style Selector="TextBox.editor">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="28,20,28,28" />
+    <Setter Property="LineHeight" Value="NaN" />
+    <Setter Property="Foreground" Value="{DynamicResource Mat.Text}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource Mat.Text}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource Mat.Selection}" />
+  </Style>
+  <Style Selector="TextBox.editor /template/ Border#PART_BorderElement, TextBox.editor:pointerover /template/ Border#PART_BorderElement, TextBox.editor:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="TextBox.editor:focus">
+    <Setter Property="Foreground" Value="{DynamicResource Mat.Text}" />
+  </Style>
+  <Style Selector="TextBox.editor /template/ TextBlock#PART_Watermark, TextBox.editor /template/ TextBlock#PART_FloatingWatermark">
+    <Setter Property="Foreground" Value="{DynamicResource Mat.TextFaint}" />
+  </Style>
+
+  <!-- ===== The formatting bar and the bars around the editor ===== -->
+  <Style Selector="Border.bar">
+    <Setter Property="Background" Value="{DynamicResource Mat.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Mat.Border}" />
+  </Style>
+  <!-- a formatting button: square, quiet, the letter or icon of what it does -->
+  <Style Selector="Button.format">
+    <Setter Property="MinWidth" Value="32" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="7,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.format:disabled">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+  <Style Selector="Rectangle.divider">
+    <Setter Property="Width" Value="1" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Margin" Value="6,0" />
+    <Setter Property="Fill" Value="{DynamicResource Mat.Border}" />
+  </Style>
+  <!-- the status bar: small, muted, segments with a hairline between them (like Notepad) -->
+  <Style Selector="Border.status TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Mat.FontSizeXs}" />
+    <Setter Property="Foreground" Value="{DynamicResource Mat.TextMuted}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.status Rectangle.divider">
+    <Setter Property="Height" Value="14" />
+    <Setter Property="Margin" Value="12,0" />
+  </Style>
+
+  <!-- ===== The Markdown preview in the colours of the theme ===== -->
+  <Style Selector="Border.preview">
+    <Setter Property="Background" Value="{DynamicResource Mat.Surface}" />
+  </Style>
+</Styles>

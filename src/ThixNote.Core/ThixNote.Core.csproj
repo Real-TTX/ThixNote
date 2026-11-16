@@ -1,9 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Models, business layer (static classes), infrastructure and the native parts of ThixNote for Windows and macOS: the
+    notes as files, encryption, export, settings, policies, the Windows installation and the updates. No UI.
+  -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>ThixNote.Core</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SupportedOSPlatformVersion Condition="'$(OS)' == 'Windows_NT'">10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Markdig" Version="*" />
+    <InternalsVisibleTo Include="ThixNote.Tests" />
+    <InternalsVisibleTo Include="ThixNote" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="0.45.0" />
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,12 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ThixNote.App"
+             Name="ThixNote"
+             RequestedThemeVariant="Default">
+  <!--
+    The look is MatDesktop's (MatDesktop/, copied from MatDesign): App.Initialize installs its theme with ThixNote's accent
+    (Fluent in the colours of the tokens, a brush per token in light and dark, the control themes of the flat look, the
+    icons of the sprite; every window takes the app's icon from it). Themes/ThixNoteControls.axaml has what only ThixNote
+    has (tabs, the editor, the note list), every value a MatDesktop resource; App.Initialize adds it after the theme.
+  -->
+</Application>

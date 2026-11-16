@@ -15,9 +15,6 @@ public static class NoteLibrary
 
     private const int PreviewLength = 4_000;
 
-    public static string DefaultNotesFolder { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ThixNote");
-
     public static bool IsSupportedFile(string path)
     {
         var extension = Path.GetExtension(path);

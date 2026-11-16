@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tests of ThixNote: the business layer (notes, encryption, settings, policies, the QuickNote takeover, installation and
+    updates) and the UI, rendered headless with Avalonia + Skia (keyboard flows, the narrow window, the snapshots:
+    THIXNOTE_SCREENSHOTS=<folder> keeps the pictures). Nothing touches the real notes, settings or registry values.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <SupportedOSPlatformVersion Condition="'$(OS)' == 'Windows_NT'">10.0.17763.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="GitHubActionsTestLogger" Version="2.4.1" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Skia" Version="11.3.22" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ThixNote\ThixNote.csproj" />
+    <ProjectReference Include="..\..\src\ThixNote.Core\ThixNote.Core.csproj" />
+  </ItemGroup>
+
+</Project>

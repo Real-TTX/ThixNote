@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mat="using:MatDesktop"
+             xmlns:vm="using:ThixNote.ViewModels"
+             x:Class="ThixNote.Pages.TabStrip"
+             x:DataType="vm:NotesViewModel">
+  <!--
+    The tabs of the open notes (the title of a note is its tab: a double click or F2 renames it) and "+" for a new one.
+    Wide, the strip sits above the editor; in a narrow window it moves into the title bar, as in Notepad (MainWindow).
+  -->
+  <DockPanel HorizontalAlignment="Left" LastChildFill="True">
+    <Button DockPanel.Dock="Right" x:Name="NewTabButton" Theme="{StaticResource MatButton.Icon}" Margin="4,0,0,0" VerticalAlignment="Center"
+            Command="{Binding NewNoteCommand}" AutomationProperties.Name="Neue Notiz">
+      <mat:MatIcon Icon="plus" Size="16" />
+    </Button>
+    <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+      <ListBox x:Name="Tabs" Classes="tabs" ItemsSource="{Binding Documents}" SelectedItem="{Binding ActiveDocument}"
+               AutomationProperties.Name="Offene Notizen">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:DocumentViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="7" Background="Transparent" ToolTip.Tip="{Binding FilePath}">
+              <mat:MatIcon Icon="lock" Size="14" IsVisible="{Binding IsEncrypted}" Foreground="{DynamicResource Mat.AccentText}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding TabTitle}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180" />
+              <Ellipse Width="7" Height="7" Fill="{DynamicResource Mat.Accent}" VerticalAlignment="Center" IsVisible="{Binding IsDirty}"
+                       ToolTip.Tip="Nicht gespeichert" />
+              <Button Classes="tabclose" Theme="{StaticResource MatButton.Ghost}" VerticalAlignment="Center"
+                      Command="{Binding $parent[UserControl].DataContext.CloseDocumentCommand}" CommandParameter="{Binding}"
+                      ToolTip.Tip="Schließen (Strg+W)" AutomationProperties.Name="Tab schließen">
+                <mat:MatIcon Icon="x" Size="12" />
+              </Button>
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>
