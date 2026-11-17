@@ -60,9 +60,18 @@ internal static class Ui
     /// <summary>Puts text into the clipboard of the window's platform.</summary>
     public static void CopyToClipboard(Visual visual, string text) => _ = TopLevel.GetTopLevel(visual)?.Clipboard?.SetTextAsync(text);
 
+    /// <summary>Tests see what would be opened instead of a browser opening on the machine that runs them.</summary>
+    internal static Action<string>? OpenExternalForTests { get; set; }
+
     /// <summary>Opens a web address or a folder with the program the system uses for it (browser, Explorer, Finder).</summary>
     public static void OpenExternal(string pathOrUrl)
     {
+        if (OpenExternalForTests is { } open)
+        {
+            open(pathOrUrl);
+            return;
+        }
+
         try
         {
             var startInfo = OperatingSystem.IsMacOS()

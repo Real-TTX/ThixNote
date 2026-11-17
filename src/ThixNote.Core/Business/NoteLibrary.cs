@@ -4,7 +4,8 @@ namespace ThixNote.Core.Business;
 
 /// <summary>
 /// The notes folder (default: Documents/ThixNote). Every note is a regular file named after its title;
-/// sub folders group notes. There is no database and no hidden index.
+/// sub folders group notes. There is no database and nothing hidden in the notes folder (the sync with MatCloud keeps its
+/// index in the data folder, see NoteSync).
 /// </summary>
 public static class NoteLibrary
 {
@@ -14,6 +15,9 @@ public static class NoteLibrary
     public const string DefaultTitle = "Neue Notiz";
 
     private const int PreviewLength = 4_000;
+
+    /// <summary>Tests: the trash is this folder instead of the recycle bin of the system.</summary>
+    private static string? _trashForTests;
 
     public static bool IsSupportedFile(string path)
     {
@@ -96,6 +100,7 @@ public static class NoteLibrary
         var path = MakeUniquePath(Path.Combine(folder, SanitizeTitle(title) + MarkdownExtension));
         AccessGuard.EnsureCanWrite(path);
         File.WriteAllText(path, content);
+        SyncService.NotifyLocalChange();
         return path;
     }
 
@@ -109,6 +114,7 @@ public static class NoteLibrary
 
         var path = Path.Combine(notesFolder, safeName);
         Directory.CreateDirectory(path);
+        SyncService.NotifyLocalChange();
         return path;
     }
 
@@ -130,6 +136,7 @@ public static class NoteLibrary
 
         File.Move(path, targetPath);
         EncryptionSession.Move(path, targetPath);
+        SyncService.NoteMoved(path, targetPath);
         return targetPath;
     }
 
@@ -138,6 +145,14 @@ public static class NoteLibrary
     {
         AccessGuard.EnsureCanWrite(path);
         EncryptionSession.Forget(path);
+        SyncService.NotifyLocalChange();
+        if (_trashForTests is { } trash)
+        {
+            Directory.CreateDirectory(trash);
+            File.Move(path, MakeUniquePath(Path.Combine(trash, Path.GetFileName(path))));
+            return;
+        }
+
         if (OperatingSystem.IsWindows())
         {
             Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
@@ -163,6 +178,7 @@ public static class NoteLibrary
         if (File.Exists(path) && new FileInfo(path).Length == 0)
         {
             File.Delete(path);
+            SyncService.NotifyLocalChange();
         }
     }
 
@@ -187,6 +203,9 @@ public static class NoteLibrary
         var cleaned = new string(title.ReplaceLineEndings(" ").Where(character => !invalid.Contains(character)).ToArray()).Trim().TrimEnd('.');
         return cleaned.Length > 120 ? cleaned[..120].Trim() : cleaned;
     }
+
+    /// <summary>Tests send what goes into the trash into their own folder (null: the recycle bin / trash of the system again).</summary>
+    internal static void UseTrashForTests(string? folder) => _trashForTests = folder;
 
     public static bool IsSamePath(string? first, string? second)
         => first is not null && second is not null

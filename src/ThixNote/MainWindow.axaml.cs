@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using MatDesktop;
@@ -42,6 +43,9 @@ public partial class MainWindow : MatWindow
     private readonly List<MatNavItem> _navFolders = [];
     private readonly IconLabel _newFolderLabel = new() { Icon = "plus", Text = "Neuer Ordner …" };
     private readonly IconLabel _notesFolderLabel = new() { Icon = "folder-open", Text = "Notizordner öffnen" };
+    private readonly TextBlock _cloudText = new() { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 170 };
+    private readonly Avalonia.Controls.Shapes.Ellipse _cloudDot = new() { Width = 8, Height = 8, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, -2, -1) };
+    private Button _cloudButton = null!;
     private bool _isCompact;
     private bool _isLaidOut;
 
@@ -131,8 +135,26 @@ public partial class MainWindow : MatWindow
         RefreshTitle();
 
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
-        Activated += (_, _) => notes.RefreshLibrary();
+
+        // Back in front: the notes may have been changed by another program meanwhile – read the list, and let the sync look.
+        Activated += (_, _) =>
+        {
+            notes.RefreshLibrary();
+            if (SyncService.IsConnected)
+            {
+                SyncService.Kick();
+            }
+        };
         Closing += (_, _) => notes.SaveSession();
+
+        // The sync with MatCloud: its state at the foot of the menu, the notes it changed in the list and the tabs.
+        SyncService.StatusChanged += OnSyncStatusChanged;
+        SyncService.NotesChanged += OnNotesSynced;
+        Closed += (_, _) =>
+        {
+            SyncService.StatusChanged -= OnSyncStatusChanged;
+            SyncService.NotesChanged -= OnNotesSynced;
+        };
     }
 
     /// <summary>Set by App when ThixNote ends (update, setup): the window then closes without asking anything.</summary>
@@ -270,7 +292,10 @@ public partial class MainWindow : MatWindow
         _ => _navAll,
     });
 
-    /// <summary>At the foot of the menu: a new folder and the notes folder in Explorer / Finder (icons only on the rail).</summary>
+    /// <summary>
+    /// At the foot of the menu: a new folder, the notes folder in Explorer / Finder and the state of the cloud (it leads to
+    /// Einstellungen › Cloud); icons only on the rail.
+    /// </summary>
     private StackPanel BuildMenuFoot()
     {
         var notes = Notes.ViewModel;
@@ -280,10 +305,58 @@ public partial class MainWindow : MatWindow
         ToolTip.SetTip(openFolder, $"Notizordner öffnen ({notes.NotesFolder})");
         AutomationProperties.SetName(newFolder, "Neuer Ordner");
         AutomationProperties.SetName(openFolder, "Notizordner öffnen");
-        return new StackPanel { Spacing = 2, Margin = new Thickness(0, 0, 0, 8), Children = { newFolder, openFolder } };
+
+        _cloudButton = new Button
+        {
+            Theme = Ui.Theme("MatButton.Ghost"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                Children = { new Panel { Children = { new MatIcon { Icon = "cloud", Size = 16 }, _cloudDot } }, _cloudText },
+            },
+        };
+        _cloudButton.Click += (_, _) => ShowSettings(SettingsPage.CloudTab);
+        return new StackPanel { Spacing = 2, Margin = new Thickness(0, 0, 0, 8), Children = { newFolder, openFolder, _cloudButton } };
     }
 
-    private void RefreshMenuFoot() => _newFolderLabel.IsTextVisible = _notesFolderLabel.IsTextVisible = !Sidebar.IsFolded;
+    private void RefreshMenuFoot()
+    {
+        _newFolderLabel.IsTextVisible = _notesFolderLabel.IsTextVisible = _cloudText.IsVisible = !Sidebar.IsFolded;
+        RefreshCloudState();
+    }
+
+    /// <summary>The cloud in words with a dot in the colour of its state (the word too: never the colour alone).</summary>
+    private void RefreshCloudState()
+    {
+        var cloud = SettingsService.Get().Cloud;
+        var status = SyncService.Status;
+        _cloudButton.IsVisible = !AccessPolicy.IsCloudDisabled;
+        (_cloudText.Text, var dot) = status.State switch
+        {
+            CloudState.Online => ($"Synchronisiert · {cloud.UserName}", "Mat.Success"),
+            CloudState.Syncing => ("Synchronisiere …", "Mat.Accent"),
+            CloudState.Connecting => ("Verbinde …", "Mat.Accent"),
+            CloudState.Offline => ("Cloud nicht erreichbar", "Mat.Warning"),
+            CloudState.SignedOut => ("Abgemeldet – neu anmelden", "Mat.Danger"),
+            _ => cloud.IsConnected ? ("Cloud verbunden", "Mat.Success") : ("Mit Cloud verbinden", (string?)null),
+        };
+        _cloudDot.IsVisible = dot is not null;
+        if (dot is not null)
+        {
+            _cloudDot.Use(Avalonia.Controls.Shapes.Shape.FillProperty, dot);
+        }
+
+        var tip = status.LastSync is { } last ? $"{status.Message} (zuletzt {Ui.FormatDateTime(last)})" : status.Message;
+        ToolTip.SetTip(_cloudButton, Sidebar.IsFolded ? $"{_cloudText.Text}\n{tip}" : tip);
+        AutomationProperties.SetName(_cloudButton, _cloudText.Text);
+    }
+
+    private void OnSyncStatusChanged(object? sender, SyncStatus status) => Ui.Post(RefreshCloudState);
+
+    private void OnNotesSynced(object? sender, IReadOnlyList<NoteChange> changes) => Ui.Post(() => Notes.ViewModel.ApplySyncChanges(changes));
 
     /// <summary>A waiting update shows as a link above the version (SETUP-06); it leads to Einstellungen › Updates.</summary>
     private void RefreshUpdate() => Sidebar.UpdateVersion = UpdateCoordinator.AvailableVersion;

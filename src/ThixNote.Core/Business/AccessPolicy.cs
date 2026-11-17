@@ -16,6 +16,7 @@ namespace ThixNote.Core.Business;
 ///   macOS:   a configuration profile for the domain info.schmoldt.thixnote (/Library/Managed Preferences)
 /// Policies:
 ///   LockConfiguration   the settings are read-only (the notes themselves stay usable)
+///   DisableCloud        no connection to MatCloud (no note leaves the computer)
 ///   DisableUpdates      no update check, no update installation
 /// </summary>
 public static class AccessPolicy
@@ -32,6 +33,8 @@ public static class AccessPolicy
 
     public static bool IsConfigurationLocked => _readPolicy("LockConfiguration");
 
+    public static bool IsCloudDisabled => _readPolicy("DisableCloud");
+
     public static bool AreUpdatesDisabled => _readPolicy("DisableUpdates");
 
     public static void EnsureConfigurationEditable()
@@ -39,6 +42,14 @@ public static class AccessPolicy
         if (IsConfigurationLocked)
         {
             throw new BusinessException("Die Einstellungen wurden von einem Administrator gesperrt (Richtlinie LockConfiguration).");
+        }
+    }
+
+    public static void EnsureCloudAllowed()
+    {
+        if (IsCloudDisabled)
+        {
+            throw new BusinessException("Die Cloud-Synchronisierung wurde von einem Administrator deaktiviert (Richtlinie DisableCloud).");
         }
     }
 

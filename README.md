@@ -20,6 +20,10 @@ Eine bewusst einfache Notiz-App für Windows und macOS (C#, Avalonia mit MatDesk
 |---|---|
 | ![Einstellungen mit Erscheinungsbild, Notizordner, Kompaktansicht, Zeilenumbruch und Textgröße](docs/images/main-settings-light.png) | ![Optionen des Setups](docs/images/setup-options-light.png) |
 
+| Mit MatCloud verbinden | Verbunden |
+|---|---|
+| ![Anmeldung im Browser: ThixNote zeigt den Code, der im Browser bestätigt wird](docs/images/main-settings-cloud-code-light.png) | ![Einstellungen › Cloud: verbunden, Status und zuletzt synchronisiert](docs/images/main-settings-cloud-light.png) |
+
 Alle Bilder in [`docs/images`](docs/images) gibt es hell und dunkel. Sie entstehen mit `ThixNote --snapshot` aus Beispielnotizen.
 
 ## Installation
@@ -47,6 +51,7 @@ Jeder Kanal hat ein mitlaufendes Release: `release-channel` (Branch `main`) und 
 Administratoren können per Richtlinie eingreifen: Windows `HKLM\SOFTWARE\Policies\ThixNote` (DWORD 1), macOS Konfigurationsprofil `info.schmoldt.thixnote`:
 
 - `LockConfiguration` sperrt die Einstellungen.
+- `DisableCloud` schaltet die Synchronisierung mit MatCloud ab: keine Notiz verlässt den Computer.
 - `DisableUpdates` schaltet die Updates ab.
 
 ## So funktioniert es
@@ -86,6 +91,29 @@ Administratoren können per Richtlinie eingreifen: Windows `HKLM\SOFTWARE\Polici
 | Strg+Umschalt+K | Kompaktansicht ein und aus |
 | Strg+, | Einstellungen |
 
+## Sync mit MatCloud
+
+Mit MatCloud, der Cloud der Thix-Apps (selbst betrieben, Docker), sind deine Notizen auf allen PCs und Macs gleich. ThixNote hat dort kein eigenes Modul, es legt seine Notizen in der allgemeinen Synchronisierung von MatCloud ab (App `note`).
+
+**Verbinden:** Einstellungen › Cloud (Strg+, und dann der Tab „Cloud“, oder unten im Menü „Mit Cloud verbinden“).
+
+1. Die Adresse deiner MatCloud eintragen (z. B. `https://cloud.example.com`) und den Namen dieses Geräts prüfen.
+2. **Im Browser anmelden:** ThixNote zeigt einen Code groß an und öffnet die Anmeldeseite der Cloud. Dort anmelden (mit Passwort oder über MatIdentity), den Code vergleichen und bestätigen. ThixNote verbindet sich dann von selbst; „Abbrechen“ beendet das Warten.
+3. Oder **mit Benutzername und Passwort** eines lokalen Kontos der Cloud. Das Passwort wird nur für die Anmeldung gebraucht und nie gespeichert.
+
+Gespeichert wird nur ein Geräte-Token, geschützt für dein Benutzerkonto (Windows: DPAPI, macOS: Schlüsselbund). In der Cloud unter „Geräte“ lässt sich der Computer jederzeit entfernen; ThixNote meldet sich dann ab. „Abmelden“ in den Einstellungen tut dasselbe von hier aus, die Notizen auf dem Computer bleiben.
+
+**Was abgeglichen wird:**
+
+- Jede Notiz (`.md`, `.txt`, `.txts`) ist ein Eintrag mit einem festen Schlüssel: Inhalt, Umbenennen und Verschieben in einen anderen Ordner kommen auf den anderen Geräten an, auch wenn du die Datei im Explorer oder Finder verschiebst. Ordner kommen mit, auch leere.
+- **Kennwortgeschützte Notizen (`.txts`) gehen nur verschlüsselt** in die Cloud, Byte für Byte wie die Datei. Die Cloud sieht ihren Text nie, entsperrt wird mit demselben Kennwort auf jedem Gerät.
+- Gelöschte Notizen landen auf den anderen Geräten im Papierkorb, nicht im Nichts.
+- **Konflikt:** Wurde eine Notiz hier und auf einem anderen Gerät geändert, bleiben beide. Die Fassung aus der Cloud behält den Namen, die von hier liegt daneben als „Titel (Konflikt Gerätename).md“ und wird als eigene Notiz abgeglichen.
+- Eine Notiz, die in einem Tab ungespeicherte Änderungen hat, wird nie angefasst. Ihre Änderung aus der Cloud wartet, bis du speicherst. Offene Tabs folgen einer Umbenennung von anderswo und zeigen den neuen Text.
+- Beim ersten Verbinden gehen alle Notizen dieses Computers hoch und alle aus der Cloud kommen herunter. Notizen, die es auf beiden Seiten schon gleich gab, werden zusammengeführt statt verdoppelt.
+- ThixNote gleicht im Hintergrund ab: sofort nach dem Speichern, und Änderungen anderer Geräte kommen innerhalb von Sekunden (Long Poll). Ohne Netz wartet es und versucht es wieder. Der Stand steht unten im Menü und unter Einstellungen › Cloud („Jetzt synchronisieren“).
+- Wählst du einen anderen Notizordner, wird dieser mit der Cloud abgeglichen wie beim ersten Verbinden.
+
 ## Umstieg von QuickNote
 
 ThixNote hieß früher QuickNote. Das alte Repository wird nicht weitergeführt.
@@ -99,7 +127,8 @@ ThixNote hieß früher QuickNote. Das alte Repository wird nicht weitergeführt.
 
 | Projekt | Inhalt |
 |---|---|
-| `src/ThixNote.Core` | Modelle, Business-Layer (statische Klassen: `NoteLibrary`, `NoteContent`, `NoteEncryption`, `AccessGuard`, `NoteExporter`, `SettingsService`, `AccessPolicy`, `InstallService`, `UpdateService`, `QuickNoteMigration` …), Infrastruktur (`AppPaths`, `AppInfo`, `SettingsStore`, `Log`, `ProblemReports`) |
+| `src/ThixNote.Core` | Modelle, Business-Layer (statische Klassen: `NoteLibrary`, `NoteContent`, `NoteEncryption`, `AccessGuard`, `NoteExporter`, `SettingsService`, `AccessPolicy`, `SyncService`, `NoteSync`, `InstallService`, `UpdateService`, `QuickNoteMigration` …), Infrastruktur (`AppPaths`, `AppInfo`, `SettingsStore`, `SyncIndex`, `TokenStore`, `Log`, `ProblemReports`) |
+| `src/ThixNote.Core/MatCloud` | Kopie des Vertrags von MatCloud (`MatCloud.Contract`: Routen, DTOs, `MatCloudClient`), wird hier nie bearbeitet |
 | `src/ThixNote` | Avalonia-App mit MatDesktop: Hauptfenster, Seiten (Notizen, Einstellungen, Über), Dialoge, Setup, Selbsttest, Snapshots |
 | `src/ThixNote/MatDesktop` | Kopie des Desktop-Toolkits aus MatDesign, wird hier nie bearbeitet |
 | `tests/ThixNote.Tests` | Business-Layer, Installation an Testorten, Update-Regeln, Oberfläche headless |
@@ -118,6 +147,7 @@ dotnet run --project src/ThixNote
 - Windows-Build wie in der CI: `dotnet publish src/ThixNote -c Release -r win-x64 -o publish`. Ergebnis ist eine getrimmte Single-File-Exe von etwa 35 MB. Mit `publish\ThixNote.exe --self-test bericht.txt` prüft sie sich selbst.
 - Bilder für README und MatDesign: `dotnet run --project src/ThixNote -- --snapshot docs/images`.
 - Icons neu erzeugen: `dotnet run --project tools/IconGen -- .`
+- Neuer Vertrag von MatCloud: `node ../MatCloud/tools/contract-copy.js src/ThixNote.Core` (ein Test prüft die Kopie gegen `matcloud.version`).
 
 ## Versionierung
 

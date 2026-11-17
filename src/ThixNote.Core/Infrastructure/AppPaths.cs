@@ -3,8 +3,8 @@ namespace ThixNote.Core.Infrastructure;
 /// <summary>
 /// Where ThixNote keeps its files. Program files, its own data and the notes are separate: updates and uninstalling never
 /// touch the notes, and the data folder only when the user decides so.
-///   Data (settings, updates, logs): Windows %LocalAppData%\ThixNote, macOS ~/Library/Application Support/ThixNote
-///   Notes (the default):            Dokumente/ThixNote (a setting can point elsewhere)
+///   Data (settings, updates, logs, sync index): Windows %LocalAppData%\ThixNote, macOS ~/Library/Application Support/ThixNote
+///   Notes (the default):                        Dokumente/ThixNote (a setting can point elsewhere)
 /// </summary>
 public static class AppPaths
 {
@@ -23,6 +23,9 @@ public static class AppPaths
     public static string UpdateDirectory => Path.Combine(DataDirectory, "updates");
 
     public static string LogDirectory => Path.Combine(DataDirectory, "logs");
+
+    /// <summary>What the notes were when they were last synchronised with MatCloud (keys, paths, hashes, the last revision).</summary>
+    public static string SyncIndexFile => Path.Combine(DataDirectory, "sync-index.json");
 
     /// <summary>The notes folder unless the settings name another one.</summary>
     public static string DefaultNotesFolder => _dataDirectoryOverride is { } own

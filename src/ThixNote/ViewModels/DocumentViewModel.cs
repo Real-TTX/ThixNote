@@ -134,13 +134,54 @@ public sealed partial class DocumentViewModel : ObservableObject
     {
         Save();
         autosaveTimer.Stop();
+        SyncService.SetUnsavedChanges(FilePath, false);
         if (wasCreatedEmpty && hasAutoTitle && Text.Trim().Length == 0)
         {
             NoteLibrary.DeleteIfEmpty(FilePath);
         }
     }
 
-    public void Discard() => autosaveTimer.Stop();
+    public void Discard()
+    {
+        autosaveTimer.Stop();
+        SyncService.SetUnsavedChanges(FilePath, false);
+    }
+
+    /// <summary>
+    /// The sync changed the file of this tab (another computer renamed, moved or edited the note): the tab follows it and shows
+    /// the new text. The sync never does this while the tab has unsaved changes.
+    /// </summary>
+    public void ApplySyncChange(string newPath, bool contentChanged)
+    {
+        if (IsDirty)
+        {
+            return;
+        }
+
+        if (!NoteLibrary.IsSamePath(newPath, FilePath))
+        {
+            hasAutoTitle = false; // named elsewhere: the first line no longer names it
+            MoveTo(Path.GetFullPath(newPath));
+        }
+
+        if (!contentChanged)
+        {
+            return;
+        }
+
+        try
+        {
+            LoadContent();
+            StatusText = "Aus der Cloud aktualisiert";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidPasswordException or InvalidNoteFileException)
+        {
+            // A protected note the key of this session no longer opens (a new password elsewhere): locked, it asks again.
+            NoteContent.Lock(FilePath);
+            SetTextWithoutTracking(string.Empty);
+            IsLocked = true;
+        }
+    }
 
     public async Task ProtectAsync(string password)
     {
@@ -230,11 +271,23 @@ public sealed partial class DocumentViewModel : ObservableObject
         MarkDirty();
     }
 
+    /// <summary>The sync leaves a note alone while it has unsaved changes here.</summary>
+    partial void OnIsDirtyChanged(bool value) => SyncService.SetUnsavedChanges(FilePath, value);
+
     partial void OnUnlockErrorChanged(string value) => OnPropertyChanged(nameof(HasUnlockError));
 
     partial void OnLineChanged(int value) => OnPropertyChanged(nameof(PositionText));
 
     partial void OnColumnChanged(int value) => OnPropertyChanged(nameof(PositionText));
+
+    partial void OnFilePathChanged(string? oldValue, string newValue)
+    {
+        if (IsDirty && oldValue is not null)
+        {
+            SyncService.SetUnsavedChanges(oldValue, false);
+            SyncService.SetUnsavedChanges(newValue, true);
+        }
+    }
 
     partial void OnFilePathChanged(string value)
     {

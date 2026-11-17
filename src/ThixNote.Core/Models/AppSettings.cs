@@ -52,4 +52,32 @@ public sealed record AppSettings
 
     /// <summary>A new version is downloaded by itself and installed when ThixNote is closed.</summary>
     public bool InstallUpdatesAutomatically { get; init; } = true;
+
+    /// <summary>The connection to MatCloud (only SyncService changes it).</summary>
+    public CloudSettings Cloud { get; init; } = new();
+}
+
+/// <summary>
+/// The connection to MatCloud, the cloud of the Thix apps (ThixNote keeps its notes in its general sync). The device token is
+/// stored protected (DPAPI on Windows, the Keychain on macOS), never in plain text; the password is never stored.
+/// </summary>
+public sealed record CloudSettings
+{
+    /// <summary>The address of the cloud, e.g. https://cloud.example.com. Kept after signing out (the form shows it again).</summary>
+    public string ServerUrl { get; init; } = string.Empty;
+
+    public string UserName { get; init; } = string.Empty;
+
+    public string DisplayName { get; init; } = string.Empty;
+
+    /// <summary>The name of this computer in the cloud (and in the name of a conflict copy).</summary>
+    public string DeviceName { get; init; } = string.Empty;
+
+    /// <summary>The id of this device in the cloud; 0 = not signed in.</summary>
+    public long DeviceId { get; init; }
+
+    /// <summary>The device token, protected for this user (Windows DPAPI); on macOS it lives in the Keychain.</summary>
+    public string ProtectedToken { get; init; } = string.Empty;
+
+    public bool IsConnected => ServerUrl.Length > 0 && DeviceId > 0;
 }

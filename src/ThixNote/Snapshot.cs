@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using MatDesktop;
 using ThixNote.Core.Business;
 using ThixNote.Core.Infrastructure;
+using ThixNote.Core.Models;
 using ThixNote.Dialogs;
 using ThixNote.ViewModels;
 
@@ -35,13 +36,15 @@ internal static class Snapshot
     private const string ProgramFolder = @"C:\Users\Anna\AppData\Local\Programs\ThixNote";
     private const string DataFolder = @"C:\Users\Anna\AppData\Local\ThixNote";
     private const string NotesFolder = @"C:\Users\Anna\Documents\ThixNote";
+    private const string CloudUrl = "https://cloud.example.com";
 
     private static readonly string[] Themes = ["light", "dark"];
 
     private static readonly string[] ThemedPictures =
     [
         "setup-welcome", "setup-options", "setup-progress", "setup-finish", "setup-update", "setup-uninstall",
-        "main-notes", "main-preview", "main-locked", "main-compact", "main-folded", "main-settings", "main-about",
+        "main-notes", "main-preview", "main-locked", "main-compact", "main-folded", "main-settings",
+        "main-settings-cloud-signin", "main-settings-cloud-code", "main-settings-cloud", "main-about",
         "dialog-password", "dialog-rename", "toast",
     ];
 
@@ -216,6 +219,7 @@ internal static class Snapshot
         settings.NotesFolderRow.Description = NotesFolder;
         Settle(window);
         Save(window, folder, $"main-settings-{theme}.png", report);
+        RenderCloudTab(window, settings, folder, theme, report);
 
         // The about page tells this machine's system and folders: the pictures show a typical installation instead.
         window.ShowAbout();
@@ -297,6 +301,40 @@ internal static class Snapshot
         report.Written.Add(name);
     }
 
+    /// <summary>
+    /// Einstellungen › Cloud in its three states: the sign-in, the code that waits for the browser, and the connection. No
+    /// cloud and no browser: the code, the account and the state are fixed values; the settings forget them again.
+    /// </summary>
+    private static void RenderCloudTab(MainWindow window, Pages.SettingsPage settings, string folder, string theme, SnapshotReport report)
+    {
+        settings.ShowTab(Pages.SettingsPage.CloudTab);
+        settings.ServerUrlBox.Text = CloudUrl;
+        settings.DeviceNameBox.Text = MachineName;
+        Settle(window);
+        Save(window, folder, $"main-settings-cloud-signin-{theme}.png", report);
+
+        settings.ShowLinkCodeForSnapshot("K7QF-M2XD", $"{CloudUrl}/Connect?code=K7QF-M2XD");
+        Settle(window);
+        Save(window, folder, $"main-settings-cloud-code-{theme}.png", report);
+        settings.ShowLinkCodeForSnapshot(null);
+
+        SettingsService.UpdateCloud(_ => new CloudSettings { ServerUrl = CloudUrl, UserName = "anna", DisplayName = "Anna Berger", DeviceName = MachineName, DeviceId = 7 });
+        SyncService.ShowStatusForSnapshot(new SyncStatus(CloudState.Online, "Synchronisiert", Moment.AddMinutes(-1)));
+        Settle(window);
+        Save(window, folder, $"main-settings-cloud-{theme}.png", report);
+
+        ForgetCloud();
+        settings.ShowLinkCodeForSnapshot(null);
+        settings.ShowTab(Pages.SettingsPage.GeneralTab);
+        Settle(window);
+    }
+
+    private static void ForgetCloud()
+    {
+        SyncService.ShowStatusForSnapshot(null);
+        SettingsService.UpdateCloud(_ => new CloudSettings());
+    }
+
     /// <summary>Pins clock, version and computer name and keeps the policies out.</summary>
     private static IDisposable Isolate()
     {
@@ -305,6 +343,7 @@ internal static class Snapshot
         AccessPolicy.UsePolicyReaderForTests(_ => false);
         return new Restore(() =>
         {
+            ForgetCloud();
             AccessPolicy.UsePolicyReaderForTests(null);
             AppInfo.Pin(null);
             AppClock.Pin(null);

@@ -127,6 +127,7 @@ public partial class App : Application
         }
 
         UpdateCoordinator.Start();
+        SyncService.Start(); // MatCloud: only when this computer is signed in
     }
 
     /// <summary>Brings the window to the front and opens the files as tabs (a second start, Finder).</summary>
@@ -168,6 +169,7 @@ public partial class App : Application
 
         _isExiting = true;
         UiWatchdog.Stop();
+        SyncService.Stop();
         if (_mainWindow is { IsVisible: true })
         {
             _mainWindow.IsExiting = true;
@@ -200,6 +202,7 @@ public partial class App : Application
         await UpdateService.StartInstallerAsync(update, restart: true);
         _isExiting = true;
         UiWatchdog.Stop();
+        SyncService.Stop();
         if (_mainWindow is not null)
         {
             _mainWindow.IsExiting = true;

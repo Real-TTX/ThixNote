@@ -10,8 +10,8 @@ namespace ThixNote;
 
 /// <summary>
 /// "ThixNote.exe --self-test &lt;report file&gt;": the published program checks itself – everything trimming or single-file
-/// packaging could break silently: JSON of the settings and the update manifest, encryption, the Markdown export, the
-/// embedded document icon, Windows shortcuts (COM) and the windows of the app with their bindings. It runs in a fresh
+/// packaging could break silently: JSON of the settings, the update manifest, the MatCloud contract and the sync index, the
+/// protection of the device token (DPAPI), encryption, the Markdown export, the embedded document icon, Windows shortcuts (COM) and the windows of the app with their bindings. It runs in a fresh
 /// temporary data folder (Program sets it) with the sample notes, never touches the user's notes, writes a report and ends
 /// with exit code 0 (all passed) or 1. CI runs it on every Windows build.
 /// </summary>
@@ -67,6 +67,28 @@ internal static class SelfTest
             var html = NoteExporter.Render("Plan", File.ReadAllText(samples[SampleNotes.Plan]), ExportFormat.Html);
             Ensure(html.Contains("<table>", StringComparison.Ordinal), "Markdown not rendered to HTML");
             return Task.FromResult($"{samples.Count} notes");
+        });
+
+        await Check("cloud (contract JSON, sync index, token)", () =>
+        {
+            var item = new MatCloud.Contract.SyncItemDto { Collection = "notes", Key = "k1", Data = """{"path":"a.md","content":"x"}""", UpdatedAt = DateTimeOffset.UtcNow };
+            var push = System.Text.Json.JsonSerializer.Serialize(new MatCloud.Contract.SyncPushRequest([item]), MatCloud.Contract.CloudContract.Json);
+            Ensure(push.Contains("\"collection\":\"notes\"", StringComparison.Ordinal), "push not written");
+            const string json = """{"items":[{"collection":"notes","key":"k1","data":"{}","updatedAt":"2026-11-16T12:00:00Z","revision":3}],"latest":3,"hasMore":false}""";
+            var changes = System.Text.Json.JsonSerializer.Deserialize<MatCloud.Contract.SyncChangeSet>(json, MatCloud.Contract.CloudContract.Json);
+            Ensure(changes is { Latest: 3, Items.Count: 1 } && changes.Items[0].Revision == 3, "change set not read");
+
+            var indexFile = Path.Combine(AppPaths.DataDirectory, "self-test-index.json");
+            new SyncIndex { Account = "a@b", LastRevision = 5, Notes = { ["k1"] = new SyncedNote { Path = "a.md", Hash = "h" } }, Deferred = { item } }.Save(indexFile);
+            var index = SyncIndex.Load(indexFile);
+            Ensure(index is { LastRevision: 5, Deferred.Count: 1 } && index.Notes["k1"].Path == "a.md", "sync index did not survive a save");
+
+            if (OperatingSystem.IsWindows())
+            {
+                Ensure(TokenStore.Read("a@b", TokenStore.Save("a@b", "token-123")) == "token-123", "the token was not protected and read back (DPAPI)");
+            }
+
+            return Task.FromResult(SyncService.UserAgent);
         });
 
         if (OperatingSystem.IsWindows())

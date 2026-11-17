@@ -255,6 +255,48 @@ public sealed class UiTests
     }
 
     [AvaloniaFact]
+    public void The_cloud_tab_signs_in_in_the_browser_with_the_keyboard()
+    {
+        using var data = new TestData();
+        var cloud = new FakeCloud();
+        var opened = new List<string>();
+        SyncService.HandlerForTests = () => cloud;
+        Ui.OpenExternalForTests = opened.Add;
+        try
+        {
+            var window = Open(data);
+            window.ShowSettings(Pages.SettingsPage.CloudTab);
+            Settle(window);
+            var page = (Pages.SettingsPage)window.PageHost.Content!;
+            Assert.True(page.CloudSignIn.IsVisible);
+            Assert.Equal(AppInfo.MachineName, page.DeviceNameBox.Text);
+
+            // The address, Enter: the code shows big, the browser opens the cloud's page for it.
+            page.ServerUrlBox.Focus();
+            window.KeyTextInput("cloud.example.test");
+            window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            WaitUntil(window, () => page.CloudCode.IsVisible);
+            Assert.Equal(cloud.LastCode, page.LinkCodeText.Text);
+            Assert.Equal($"https://cloud.example.test/Connect?code={cloud.LastCode}", Assert.Single(opened));
+            Assert.True(page.CancelSignInButton.IsFocused);
+
+            // Confirmed in the browser: connected, the state shows.
+            cloud.Approve(cloud.LastCode!);
+            WaitUntil(window, () => page.CloudConnected.IsVisible);
+            Assert.True(SettingsService.Get().Cloud.IsConnected);
+            Assert.Equal($"{FakeCloud.DisplayName} ({FakeCloud.UserName})", page.CloudAccountText.Text);
+            Assert.False(page.CloudCode.IsVisible);
+
+            window.IsExiting = true;
+            window.Close();
+        }
+        finally
+        {
+            Ui.OpenExternalForTests = null;
+        }
+    }
+
+    [AvaloniaFact]
     public void The_snapshot_draws_every_window_in_light_and_dark()
     {
         using var data = new TestData();

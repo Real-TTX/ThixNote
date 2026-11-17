@@ -3,7 +3,7 @@
              xmlns:mat="using:MatDesktop"
              xmlns:controls="using:ThixNote.Controls"
              x:Class="ThixNote.Pages.SettingsPage">
-  <!-- Settings in tabs: Allgemein | Updates | Erweitert. A switch applies at once (like macOS). -->
+  <!-- Settings in tabs: Allgemein | Cloud | Updates | Erweitert. A switch applies at once (like macOS). -->
   <Border Background="{DynamicResource Mat.Surface}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="28,22,28,28" MaxWidth="820" HorizontalAlignment="Left">
@@ -57,6 +57,97 @@
             </StackPanel>
           </TabItem>
 
+          <!-- ===== Cloud ===== -->
+          <TabItem x:Name="CloudTabItem" Header="Cloud">
+            <StackPanel>
+              <TextBlock Theme="{StaticResource MatText.Muted}" Margin="0,0,0,16" TextWrapping="Wrap" MaxWidth="640" HorizontalAlignment="Left"
+                         Text="Mit MatCloud sind deine Notizen auf allen PCs und Macs gleich: neue Notizen, Änderungen, Umbenennungen und gelöschte Notizen werden abgeglichen. Mit Kennwort geschützte Notizen gehen nur verschlüsselt in die Cloud." />
+              <controls:InfoBar x:Name="CloudMessage" />
+
+              <!-- Not connected: in the browser (every account), or with user name and password (a local account of the cloud) -->
+              <StackPanel x:Name="CloudSignIn" MaxWidth="460" HorizontalAlignment="Left">
+                <mat:MatFormField Label="Adresse der Cloud" controls:FormErrors.Field="ServerUrl" Hint="Die Adresse deiner MatCloud, z. B. https://cloud.example.com">
+                  <TextBox x:Name="ServerUrlBox" Watermark="https://" AutomationProperties.Name="Adresse der Cloud" />
+                </mat:MatFormField>
+                <mat:MatFormField Label="Name dieses Geräts" controls:FormErrors.Field="DeviceName" Hint="So erscheint dieser Computer in der Cloud unter „Geräte“.">
+                  <TextBox x:Name="DeviceNameBox" AutomationProperties.Name="Name dieses Geräts" />
+                </mat:MatFormField>
+                <controls:ActionBar Margin="0,6,0,0">
+                  <Button x:Name="BrowserSignInButton" Theme="{StaticResource MatButton.Primary}" Click="OnBrowserSignInClick">
+                    <controls:IconLabel Icon="globe" Text="Im Browser anmelden" />
+                  </Button>
+                </controls:ActionBar>
+                <Button x:Name="ShowPasswordSignInButton" Theme="{StaticResource MatButton.Link}" Margin="0,16,0,0" Click="OnShowPasswordSignInClick"
+                        Content="Mit Benutzername und Passwort anmelden" />
+                <StackPanel x:Name="PasswordSignIn" IsVisible="False" Margin="0,12,0,0">
+                  <mat:MatFormField Label="Benutzername" controls:FormErrors.Field="UserName">
+                    <TextBox x:Name="UserNameBox" AutomationProperties.Name="Benutzername" />
+                  </mat:MatFormField>
+                  <mat:MatFormField Label="Passwort" controls:FormErrors.Field="Password" Hint="Wird nur für die Anmeldung gebraucht und nicht gespeichert.">
+                    <TextBox x:Name="PasswordBox" PasswordChar="●" AutomationProperties.Name="Passwort" />
+                  </mat:MatFormField>
+                  <controls:ActionBar Margin="0,6,0,0">
+                    <Button x:Name="PasswordSignInButton" Click="OnPasswordSignInClick">
+                      <controls:IconLabel Icon="login" Text="Anmelden" />
+                    </Button>
+                  </controls:ActionBar>
+                </StackPanel>
+              </StackPanel>
+
+              <!-- Waiting for the browser: the code, big -->
+              <StackPanel x:Name="CloudCode" IsVisible="False" MaxWidth="560" HorizontalAlignment="Left" Spacing="14">
+                <Border Theme="{StaticResource MatCard}">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="Bestätige diesen Code im Browser:" FontWeight="SemiBold" />
+                    <SelectableTextBlock x:Name="LinkCodeText" FontFamily="{DynamicResource Mat.Mono}" FontSize="{DynamicResource Mat.FontSize3xl}"
+                                         FontWeight="SemiBold" LetterSpacing="3" Margin="0,4" AutomationProperties.Name="Code" />
+                    <TextBlock Theme="{StaticResource MatText.Muted}" TextWrapping="Wrap"
+                               Text="Der Browser zeigt die Anmeldeseite deiner Cloud. Melde dich dort an, vergleiche den Code und bestätige ihn – ThixNote verbindet sich dann von selbst." />
+                    <SelectableTextBlock x:Name="LinkUrlText" FontSize="{DynamicResource Mat.FontSizeSm}" Foreground="{DynamicResource Mat.TextMuted}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
+                <TextBlock Text="Warte auf die Bestätigung …" Theme="{StaticResource MatText.Muted}" />
+                <controls:ActionBar>
+                  <Button Click="OnOpenLinkAgainClick">
+                    <controls:IconLabel Icon="external" Text="Browser erneut öffnen" />
+                  </Button>
+                  <Button x:Name="CancelSignInButton" Click="OnCancelSignInClick">
+                    <controls:IconLabel Icon="x" Text="Abbrechen" />
+                  </Button>
+                </controls:ActionBar>
+              </StackPanel>
+
+              <!-- Connected: the state and what can be done -->
+              <StackPanel x:Name="CloudConnected" IsVisible="False" Spacing="16">
+                <Border Theme="{StaticResource MatCard}" MaxWidth="560" HorizontalAlignment="Left">
+                  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                    <TextBlock Text="Verbunden als" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                    <TextBlock Grid.Column="1" x:Name="CloudAccountText" Margin="0,4" />
+                    <TextBlock Grid.Row="1" Text="Cloud" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                    <SelectableTextBlock Grid.Row="1" Grid.Column="1" x:Name="CloudServerText" Margin="0,4" />
+                    <TextBlock Grid.Row="2" Text="Dieses Gerät" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="CloudDeviceText" Margin="0,4" />
+                    <TextBlock Grid.Row="3" Text="Status" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" x:Name="CloudStateText" Margin="0,4" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="4" Text="Zuletzt synchronisiert" Theme="{StaticResource MatText.Muted}" Margin="0,4,24,4" />
+                    <TextBlock Grid.Row="4" Grid.Column="1" x:Name="CloudLastSyncText" Margin="0,4" />
+                  </Grid>
+                </Border>
+                <controls:ActionBar>
+                  <Button x:Name="SyncNowButton" Theme="{StaticResource MatButton.Primary}" Click="OnSyncNowClick">
+                    <controls:IconLabel Icon="refresh" Text="Jetzt synchronisieren" />
+                  </Button>
+                  <Button Click="OnOpenCloudClick">
+                    <controls:IconLabel Icon="external" Text="Im Browser öffnen" />
+                  </Button>
+                  <Button x:Name="DisconnectButton" Theme="{StaticResource MatButton.Danger}" controls:ActionBar.Separated="True" Click="OnDisconnectClick">
+                    <controls:IconLabel Icon="logout" Text="Abmelden" />
+                  </Button>
+                </controls:ActionBar>
+              </StackPanel>
+            </StackPanel>
+          </TabItem>
+
           <!-- ===== Updates ===== -->
           <TabItem x:Name="UpdatesTabItem" Header="Updates">
             <StackPanel>
@@ -107,7 +198,7 @@
                 </Button>
               </mat:MatSettingRow>
               <TextBlock Theme="{StaticResource MatText.Muted}" Margin="0,16,0,0" TextWrapping="Wrap"
-                         Text="Administratoren können ThixNote per Richtlinie einschränken (LockConfiguration, DisableUpdates) – unter Windows in HKLM\SOFTWARE\Policies\ThixNote, unter macOS per Konfigurationsprofil info.schmoldt.thixnote." />
+                         Text="Administratoren können ThixNote per Richtlinie einschränken (LockConfiguration, DisableCloud, DisableUpdates) – unter Windows in HKLM\SOFTWARE\Policies\ThixNote, unter macOS per Konfigurationsprofil info.schmoldt.thixnote." />
             </StackPanel>
           </TabItem>
         </TabControl>

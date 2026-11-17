@@ -27,8 +27,14 @@ public static class SettingsService
         AccessPolicy.EnsureConfigurationEditable();
         var next = change(SettingsStore.Read());
         Validate(next);
-        return Save(_ => next);
+
+        // The cloud section belongs to SyncService (its background loop may have written it meanwhile).
+        return Save(current => next with { Cloud = current.Cloud });
     }
+
+    /// <summary>The connection to MatCloud: only SyncService changes it (sign-in, sign-out), in one step under the store's lock.</summary>
+    internal static AppSettings UpdateCloud(Func<CloudSettings, CloudSettings> change) =>
+        Save(current => current with { Cloud = change(current.Cloud) });
 
     /// <summary>Chooses another notes folder (it is created if needed); the notes stay where they are.</summary>
     public static AppSettings SetNotesFolder(string folder)

@@ -2,7 +2,8 @@
 
   <!--
     Models, business layer (static classes), infrastructure and the native parts of ThixNote for Windows and macOS: the
-    notes as files, encryption, export, settings, policies, the Windows installation and the updates. No UI.
+    notes as files, encryption, export, settings, policies, the Windows installation, the updates and the sync with
+    MatCloud (MatCloud/ is a COPY of its contract: node <MatCloud>/tools/contract-copy.js src/ThixNote.Core, never edited here). No UI.
   -->
   <PropertyGroup>
     <RootNamespace>ThixNote.Core</RootNamespace>
@@ -17,6 +18,8 @@
 
   <ItemGroup>
     <PackageReference Include="Markdig" Version="0.45.0" />
+    <!-- The device token of MatCloud, protected for the user on Windows (TokenStore). -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.15" />
   </ItemGroup>
 
 </Project>

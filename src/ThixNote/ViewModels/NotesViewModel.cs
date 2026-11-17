@@ -134,6 +134,53 @@ public sealed partial class NotesViewModel : ObservableObject
         RefreshList();
     }
 
+    /// <summary>
+    /// The sync with MatCloud changed notes in the folder: open tabs follow a rename or move and show the new text, a tab of a
+    /// note that went into the trash closes, favourites keep pointing to their notes; then the list is read again. Notes with
+    /// unsaved changes are never among them (the sync waits for them).
+    /// </summary>
+    public void ApplySyncChanges(IReadOnlyList<NoteChange> changes)
+    {
+        foreach (var change in changes.Where(change => change.OldPath is not null))
+        {
+            var document = Documents.FirstOrDefault(document => NoteLibrary.IsSamePath(document.FilePath, change.OldPath));
+            if (document is null)
+            {
+                SettingsService.Remember(settings => settings with
+                {
+                    Favorites = change.NewPath is null
+                        ? settings.Favorites.Where(favorite => !NoteLibrary.IsSamePath(favorite, change.OldPath)).ToList()
+                        : settings.Favorites.Select(favorite => NoteLibrary.IsSamePath(favorite, change.OldPath) ? change.NewPath : favorite).ToList(),
+                });
+                continue;
+            }
+
+            if (change.NewPath is not null)
+            {
+                document.ApplySyncChange(change.NewPath, change.ContentChanged);
+                continue;
+            }
+
+            if (document.IsDirty)
+            {
+                continue;
+            }
+
+            document.Discard();
+            SettingsService.Remember(settings => settings with { Favorites = settings.Favorites.Where(favorite => !NoteLibrary.IsSamePath(favorite, change.OldPath)).ToList() });
+            var index = Documents.IndexOf(document);
+            Documents.Remove(document);
+            if (ReferenceEquals(ActiveDocument, document))
+            {
+                ActiveDocument = Documents.Count == 0 ? null : Documents[Math.Clamp(index, 0, Documents.Count - 1)];
+            }
+
+            RememberTabs();
+        }
+
+        RefreshLibrary();
+    }
+
     /// <summary>Another notes folder was chosen in the settings: the tabs stay, the list shows the new folder.</summary>
     public void ReloadNotesFolder()
     {

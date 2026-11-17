@@ -38,11 +38,13 @@ public static class NoteContent
         if (NoteLibrary.GetKind(path) != NoteFileKind.Encrypted)
         {
             File.WriteAllText(path, content, Utf8WithoutBom);
+            SyncService.NotifyLocalChange();
             return;
         }
 
         var key = AccessGuard.EnsureUnlocked(path);
         WriteAtomically(path, NoteEncryption.Encrypt(content, key));
+        SyncService.NotifyLocalChange();
     }
 
     /// <summary>Protects a plain note with a password. Returns the new path (.txts); the plain file is removed.</summary>
@@ -63,6 +65,7 @@ public static class NoteContent
             File.Delete(path);
         }
 
+        SyncService.NoteMoved(path, targetPath);
         return targetPath;
     }
 
@@ -76,6 +79,7 @@ public static class NoteContent
         File.WriteAllText(targetPath, content, Utf8WithoutBom);
         File.Delete(path);
         EncryptionSession.Forget(path);
+        SyncService.NoteMoved(path, targetPath);
         return targetPath;
     }
 
