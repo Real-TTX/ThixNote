@@ -10,7 +10,8 @@ ONE formatting bar right below, the text alone, the status bar; beside it a smal
 The compact view (Ctrl/Cmd+Shift+K, remembered; always below 900 px) is Notepad itself: no menu, the list over the editor.
 The title is never part of the text (F2 / double click on the tab renames; a new note is named after its first line until renamed).
 With **MatCloud** (the cloud of the Thix apps, `../MatCloud`) the notes are the same on every PC and Mac: ThixNote keeps them
-in its general sync (app `note`). UI language German; code, comments and identifiers English. Formerly called **QuickNote** (`QuickNoteMigration`, the
+in its general sync (app `note`). Installed by ThixLauncher, ThixNote signs in with the sign-in the launcher left for it
+(`SyncService.ConnectFromLauncherAsync` at start, `CloudHandoff` of the contract: used once, kept while the cloud does not answer). UI language German; code, comments and identifiers English. Formerly called **QuickNote** (`QuickNoteMigration`, the
 encryption magic `QNSEC1` stays for compatibility).
 
 Stack: **.NET 10**, C#, **Avalonia 11.3** with **MatDesktop 0.2.0** (the desktop toolkit of MatDesign), CommunityToolkit.Mvvm,

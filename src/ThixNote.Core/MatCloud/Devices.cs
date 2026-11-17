@@ -1,4 +1,4 @@
-// MatCloud.Contract 1.0.0 – a copy from MatCloud, do not edit here
+// MatCloud.Contract 1.2.0 – a copy from MatCloud, do not edit here
 namespace MatCloud.Contract;
 
 /// <summary>
@@ -68,3 +68,13 @@ public sealed record AccountInfo(
     string DeviceName,
     string App,
     string ServerVersion);
+
+/// <summary>
+/// POST <see cref="CloudContract.DeviceHandoff"/> by ThixLauncher: a sign-in for <paramref name="App"/> on the launcher's computer, for the account of the
+/// launcher, already confirmed. The app fetches its token with <see cref="CloudContract.DeviceLinkPoll"/> and the poll token (it finds both in
+/// <see cref="CloudHandoff"/>); the device of the app is made only then, with the launcher's device name and platform.
+/// </summary>
+public sealed record DeviceHandoffRequest(string App, string AppVersion);
+
+/// <summary>The hand-over: the poll token of the confirmed sign-in, valid once and for <paramref name="ExpiresInSeconds"/> (a day).</summary>
+public sealed record DeviceHandoffStart(string PollToken, int ExpiresInSeconds);

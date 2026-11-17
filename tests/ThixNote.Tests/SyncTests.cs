@@ -336,6 +336,61 @@ public sealed class SyncTests : IDisposable
     }
 
     [Fact]
+    public async Task Installed_by_ThixLauncher_ThixNote_connects_with_its_sign_in_once()
+    {
+        _anna.Use();
+        Assert.Null(await SyncService.ConnectFromLauncherAsync());
+        var handoff = new DeviceHandoff(Server, _cloud.LeaveHandoff("ANNA-PC"), FakeCloud.UserName, DateTimeOffset.UtcNow.AddDays(1));
+        CloudHandoff.Write(CloudApps.Note, handoff);
+
+        Assert.Equal(FakeCloud.DisplayName, await SyncService.ConnectFromLauncherAsync());
+        var cloud = SettingsService.Get().Cloud;
+        Assert.True(cloud.IsConnected);
+        Assert.Equal((Server, "ANNA-PC"), (cloud.ServerUrl, cloud.DeviceName));
+        Assert.False(CloudHandoff.Exists(CloudApps.Note));
+
+        // connected already: a later hand-over is only removed
+        CloudHandoff.Write(CloudApps.Note, handoff with { PollToken = _cloud.LeaveHandoff("ANNA-PC") });
+        Assert.Null(await SyncService.ConnectFromLauncherAsync());
+        Assert.False(CloudHandoff.Exists(CloudApps.Note));
+    }
+
+    [Fact]
+    public async Task A_sign_in_of_ThixLauncher_waits_while_the_cloud_is_away_and_goes_when_it_was_used()
+    {
+        _anna.Use();
+        var handoff = new DeviceHandoff(Server, _cloud.LeaveHandoff("ANNA-PC"), FakeCloud.UserName, DateTimeOffset.UtcNow.AddDays(1));
+        CloudHandoff.Write(CloudApps.Note, handoff);
+
+        SyncService.HandlerForTests = () => new UnreachableHandler();
+        Assert.Null(await SyncService.ConnectFromLauncherAsync());
+        Assert.True(CloudHandoff.Exists(CloudApps.Note));
+
+        // already used (here: by hand), or expired: removed, not connected, no error
+        SyncService.HandlerForTests = () => _cloud;
+        using (var client = new MatCloudClient(Server, null, "test", _cloud))
+        {
+            await client.RedeemHandoffAsync(handoff, CancellationToken.None);
+        }
+
+        Assert.Null(await SyncService.ConnectFromLauncherAsync());
+        Assert.False(CloudHandoff.Exists(CloudApps.Note));
+        Assert.False(SettingsService.Get().Cloud.IsConnected);
+
+        // a hand-over that expired on this computer is never sent
+        CloudHandoff.Write(CloudApps.Note, handoff with { ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1) });
+        var asked = _cloud.UserAgents.Count;
+        Assert.Null(await SyncService.ConnectFromLauncherAsync());
+        Assert.Equal(asked, _cloud.UserAgents.Count);
+    }
+
+    private sealed class UnreachableHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            throw new HttpRequestException("No such host is known.");
+    }
+
+    [Fact]
     public async Task The_policy_DisableCloud_keeps_every_note_on_the_computer()
     {
         _anna.Use();

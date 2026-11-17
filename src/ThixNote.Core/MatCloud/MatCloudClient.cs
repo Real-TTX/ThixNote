@@ -1,4 +1,4 @@
-// MatCloud.Contract 1.0.0 – a copy from MatCloud, do not edit here
+// MatCloud.Contract 1.2.0 – a copy from MatCloud, do not edit here
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -110,6 +110,20 @@ public sealed class MatCloudClient : IDisposable
         }
 
         throw new CloudException(HttpStatusCode.RequestTimeout, "Der Code ist abgelaufen. Bitte noch einmal anmelden.");
+    }
+
+    /// <summary>ThixLauncher: a sign-in for an app it installs (<see cref="CloudContract.DeviceHandoff"/>).</summary>
+    public Task<DeviceHandoffStart> HandOffAsync(DeviceHandoffRequest request, CancellationToken ct) =>
+        SendAsync<DeviceHandoffStart>(HttpMethod.Post, CloudContract.DeviceHandoff, JsonContent.Create(request, options: CloudContract.Json), RequestTimeout, ct);
+
+    /// <summary>
+    /// The app: fetches the sign-in ThixLauncher left for it (<see cref="CloudHandoff.Take"/>). Returns null when it expired or was used already;
+    /// throws <see cref="CloudException"/> / <see cref="HttpRequestException"/> when the cloud cannot be asked (the app keeps the hand-over then).
+    /// </summary>
+    public async Task<DeviceLoginResponse?> RedeemHandoffAsync(DeviceHandoff handoff, CancellationToken ct)
+    {
+        var answer = await PollLinkAsync(handoff.PollToken, ct);
+        return answer is { State: DeviceLinkState.Approved, Login: { } login } ? login : null;
     }
 
     public Task LogoutAsync(CancellationToken ct) =>

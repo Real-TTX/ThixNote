@@ -128,6 +128,18 @@ public partial class App : Application
 
         UpdateCoordinator.Start();
         SyncService.Start(); // MatCloud: only when this computer is signed in
+        _ = ConnectFromLauncherAsync();
+    }
+
+    /// <summary>Installed by ThixLauncher: its sign-in at MatCloud goes along (in the background; a cloud that does not answer changes nothing).</summary>
+    private static async Task ConnectFromLauncherAsync()
+    {
+        if (await Task.Run(() => SyncService.ConnectFromLauncherAsync()) is { } account)
+        {
+            Ui.Post(() => MatNotification.Show("Mit der MatCloud verbunden",
+                $"ThixNote gleicht deine Notizen jetzt mit der MatCloud ab (Konto {account}, angemeldet von ThixLauncher).",
+                onClick: () => App.Instance.MainWindow?.ShowSettings(Pages.SettingsPage.CloudTab)));
+        }
     }
 
     /// <summary>Brings the window to the front and opens the files as tabs (a second start, Finder).</summary>

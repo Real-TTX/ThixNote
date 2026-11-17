@@ -1,4 +1,4 @@
-// MatCloud.Contract 1.0.0 – a copy from MatCloud, do not edit here
+// MatCloud.Contract 1.2.0 – a copy from MatCloud, do not edit here
 using System.Text.RegularExpressions;
 
 namespace MatCloud.Contract;

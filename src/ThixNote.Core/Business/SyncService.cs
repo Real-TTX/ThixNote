@@ -156,6 +156,55 @@ public static class SyncService
         SignedIn(signIn.ServerUrl, login);
     }
 
+    /// <summary>
+    /// At start: the sign-in ThixLauncher left when it installed ThixNote (<see cref="CloudHandoff"/>). While this computer is not connected,
+    /// ThixNote fetches its own token with it and is connected without the browser; the hand-over is removed when it was used or had expired, and
+    /// kept when the cloud did not answer (the next start tries again). Returns the account it signed in with, or null. Never throws.
+    /// </summary>
+    public static async Task<string?> ConnectFromLauncherAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsConnected || AccessPolicy.IsCloudDisabled)
+        {
+            CloudHandoff.Remove(CloudApps.Note);
+            return null;
+        }
+
+        if (CloudHandoff.Find(CloudApps.Note) is not { } handoff)
+        {
+            return null;
+        }
+
+        string url;
+        DeviceLoginResponse? login;
+        try
+        {
+            url = NormalizeServerUrl(handoff.ServerUrl);
+            using var client = CreateClient(url, null);
+            login = await client.RedeemHandoffAsync(handoff, cancellationToken);
+        }
+        catch (BusinessException)
+        {
+            CloudHandoff.Remove(CloudApps.Note);
+            return null;
+        }
+        catch (Exception exception) when (IsCloudFailure(exception, cancellationToken))
+        {
+            Log.Warning($"The sign-in of ThixLauncher could not be fetched ({exception.GetType().Name}); trying again at the next start");
+            return null;
+        }
+
+        CloudHandoff.Remove(CloudApps.Note);
+        if (login is null || IsConnected)
+        {
+            Log.Info("The sign-in of ThixLauncher was used or had expired");
+            return null;
+        }
+
+        SignedIn(url, login);
+        Log.Info("Connected with the sign-in of ThixLauncher");
+        return login.Account.DisplayName.Length > 0 ? login.Account.DisplayName : login.Account.UserName;
+    }
+
     /// <summary>Signs this computer out (the cloud forgets the device); the notes stay, and so does the index for a later sign-in.</summary>
     public static async Task DisconnectAsync()
     {

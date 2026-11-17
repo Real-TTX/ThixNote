@@ -1,3 +1,4 @@
+using MatCloud.Contract;
 using ThixNote.Core.Business;
 using ThixNote.Core.Infrastructure;
 
@@ -20,6 +21,7 @@ internal sealed class TestData : IDisposable
         AccessPolicy.UsePolicyReaderForTests(_ => false);
         UpdateService.SetStateForTests(null);
         UseNoCloud();
+        CloudHandoff.Folder = Path.Combine(Folder, "handoff"); // never the sign-in a real ThixLauncher left
         NoteLibrary.UseTrashForTests(TrashFolder);
         Notes = withSampleNotes ? SampleNotes.Create(AppPaths.DefaultNotesFolder) : new Dictionary<string, string>();
     }
@@ -42,6 +44,7 @@ internal sealed class TestData : IDisposable
         }
 
         UseNoCloud();
+        CloudHandoff.Folder = CloudHandoff.DefaultFolder();
         NoteLibrary.UseTrashForTests(null);
         UpdateService.SetStateForTests(null);
         AccessPolicy.UsePolicyReaderForTests(null);

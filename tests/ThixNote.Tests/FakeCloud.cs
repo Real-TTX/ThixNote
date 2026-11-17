@@ -59,6 +59,17 @@ internal sealed class FakeCloud : HttpMessageHandler
     /// <summary>The person confirms the code in the browser (signed in as <see cref="UserName"/>).</summary>
     public void Approve(string code) => SetLinkState(code, DeviceLinkState.Approved);
 
+    /// <summary>ThixLauncher on this computer asks for a sign-in of ThixNote (already confirmed); returns the poll token it leaves for ThixNote.</summary>
+    public string LeaveHandoff(string deviceName)
+    {
+        lock (_gate)
+        {
+            var link = new Link("HAND-OVER", deviceName, Guid.NewGuid().ToString("D")) { State = DeviceLinkState.Approved };
+            _links[link.PollToken] = link;
+            return link.PollToken;
+        }
+    }
+
     /// <summary>The person refuses the code in the browser.</summary>
     public void Deny(string code) => SetLinkState(code, DeviceLinkState.Denied);
 

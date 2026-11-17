@@ -1,4 +1,4 @@
-// MatCloud.Contract 1.0.0 – a copy from MatCloud, do not edit here
+// MatCloud.Contract 1.2.0 – a copy from MatCloud, do not edit here
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -28,6 +28,12 @@ public static class CloudContract
 
     /// <summary>POST: asks whether the code was confirmed in the browser (every <see cref="DeviceLinkStart.IntervalSeconds"/>).</summary>
     public const string DeviceLinkPoll = "/api/v1/devices/link/poll";
+
+    /// <summary>
+    /// POST (only a device of <see cref="CloudApps.Launcher"/>): ThixLauncher hands its sign-in to an app it installs on its computer
+    /// (<see cref="DeviceHandoffRequest"/> → <see cref="DeviceHandoffStart"/>; the hand-over goes through <see cref="CloudHandoff"/>).
+    /// </summary>
+    public const string DeviceHandoff = "/api/v1/devices/handoff";
 
     /// <summary>POST: the device signs itself out; its token ends (204).</summary>
     public const string DeviceLogout = "/api/v1/devices/logout";
@@ -72,6 +78,7 @@ public static class CloudApps
     public const string Calendar = "calendar";
     public const string Tunnel = "tunnel";
     public const string Launcher = "launcher";
+    public const string Fred = "fred";
 
     public static readonly IReadOnlyList<CloudApp> All =
     [
@@ -80,6 +87,7 @@ public static class CloudApps
         new(Calendar, "ThixCalendar", "Kalender-Einstellungen auf allen Geräten"),
         new(Tunnel, "ThixTunnel", "Verbindungen und Profile auf allen Geräten"),
         new(Launcher, "ThixLauncher", "Die Thix-Apps und ihre Einstellungen"),
+        new(Fred, "ThixFred", "Der Launcher: Einstellungen, Themes, Websuchen, Skripte und Plugins"),
     ];
 
     public static CloudApp? Find(string? id) => All.FirstOrDefault(a => string.Equals(a.Id, id, StringComparison.Ordinal));
