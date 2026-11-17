@@ -34,6 +34,9 @@
                 </StackPanel>
               </mat:MatSettingRow>
               <mat:MatFormField controls:FormErrors.Field="NotesFolder" Margin="0" />
+              <mat:MatSettingRow x:Name="CompactModeRow" Title="Kompaktansicht" Description="Wie Notepad: Tabs, Formatierung, Text und Statusleiste, ohne Menü">
+                <ToggleSwitch x:Name="CompactModeSwitch" OnContent="" OffContent="" AutomationProperties.Name="Kompaktansicht" />
+              </mat:MatSettingRow>
               <mat:MatSettingRow Title="Zeilenumbruch" Description="Lange Zeilen brechen am Rand des Editors um (wie in Notepad).">
                 <ToggleSwitch x:Name="WordWrapSwitch" OnContent="" OffContent="" AutomationProperties.Name="Zeilenumbruch" />
               </mat:MatSettingRow>

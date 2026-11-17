@@ -34,13 +34,15 @@ public partial class SettingsPage : UserControl
         InitializeComponent();
         ThemeChoice.SelectionChanged += (_, _) => Apply(() => SettingsService.Update(settings => settings with { Theme = (ThemeChoice)Math.Max(0, ThemeChoice.SelectedIndex) }));
         WordWrapSwitch.IsCheckedChanged += (_, _) => Apply(() => _notes.WordWrap = WordWrapSwitch.IsChecked == true);
+        CompactModeSwitch.IsCheckedChanged += (_, _) => Apply(() => _notes.IsCompactMode = CompactModeSwitch.IsChecked == true);
+        CompactModeRow.Description += $" ({Ui.Shortcut("K", shift: true)}).";
         CheckUpdatesSwitch.IsCheckedChanged += (_, _) => Apply(() => SettingsService.Update(settings => settings with { CheckForUpdates = CheckUpdatesSwitch.IsChecked == true }));
         AutoInstallSwitch.IsCheckedChanged += (_, _) => Apply(() => SettingsService.Update(settings => settings with { InstallUpdatesAutomatically = AutoInstallSwitch.IsChecked == true }));
         ToolTip.SetTip(ZoomOutButton, $"Verkleinern ({Ui.Shortcut("-")})");
         ToolTip.SetTip(ZoomInButton, $"Vergrößern ({Ui.Shortcut("+")})");
         _notes.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(NotesViewModel.Zoom) or nameof(NotesViewModel.WordWrap))
+            if (e.PropertyName is nameof(NotesViewModel.Zoom) or nameof(NotesViewModel.WordWrap) or nameof(NotesViewModel.IsCompactMode))
             {
                 Ui.Post(Load);
             }
@@ -72,6 +74,7 @@ public partial class SettingsPage : UserControl
             PolicyNote.IsVisible = locked || AccessPolicy.AreUpdatesDisabled;
             ThemeChoice.SelectedIndex = (int)settings.Theme;
             WordWrapSwitch.IsChecked = _notes.WordWrap;
+            CompactModeSwitch.IsChecked = _notes.IsCompactMode;
             ZoomText.Text = _notes.ZoomText;
             NotesFolderRow.Description = SettingsService.NotesFolder;
             ThemeChoice.IsEnabled = ChangeFolderButton.IsEnabled = !locked;

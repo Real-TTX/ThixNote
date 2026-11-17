@@ -242,11 +242,13 @@ internal static class Snapshot
         rename.Close();
         Settle(window);
 
-        // Narrow: Notepad – the tabs in the title bar, the formatting bar, the text, the status bar.
-        window.Width = 640;
-        window.Height = 720;
+        // The compact view: Notepad – the logo and the tabs in the title bar, the formatting bar, the text, the status bar.
+        notes.IsCompactMode = true;
+        window.Width = 960;
+        window.Height = 640;
         Settle(window, waitLonger: true);
         Save(window, folder, $"main-compact-{theme}.png", report);
+        notes.IsCompactMode = false;
 
         window.IsExiting = true;
         window.Close();

@@ -5,10 +5,10 @@ Guidance for working in this repository. Keep it in sync with the code: update i
 ## What ThixNote is
 
 A deliberately simple note app for **Windows and macOS**: every note is a plain file (`.md` Markdown, `.txt` text, `.txts`
-password-protected), the file name is the title, sub folders are folders. Wide it is a small library (menu, note list,
-editor); narrower than 900 px it is a small editor like Notepad (tabs in the title bar, the list over the editor). The
-editor is laid out like Notepad: tabs, ONE formatting bar across the width, the text alone, the status bar – the title
-is never part of the text (F2 / double click on the tab renames; a new note is named after its first line until renamed).
+password-protected), the file name is the title, sub folders are folders. Laid out like Notepad: the TABS in the title bar,
+ONE formatting bar right below, the text alone, the status bar; beside it a small library (menu, note list with the search).
+The compact view (Ctrl/Cmd+Shift+K, remembered; always below 900 px) is Notepad itself: no menu, the list over the editor.
+The title is never part of the text (F2 / double click on the tab renames; a new note is named after its first line until renamed).
 UI language German; code, comments and identifiers English. Formerly called **QuickNote** (`QuickNoteMigration`, the
 encryption magic `QNSEC1` stays for compatibility).
 
@@ -28,7 +28,7 @@ setup, update and tests; MatDesign (`../MatDesign`, docs/DESKTOP.md) holds the r
   notes in `<folder>/Notizen`), which never meets the installed one.
 - **Snapshots:** `dotnet run --project src/ThixNote -- --snapshot docs/images` draws every window headless from the sample
   notes (`SampleNotes`), pinned clock 16.11.2026 14:32, version 1.1.0, ANNA-PC, light and dark: `setup-*`,
-  `main-{notes,preview,locked,compact,folded,settings,about}`, `dialog-{password,rename}`, `toast`. The README uses them; a
+  `main-{notes,preview,locked,compact (the compact view),folded,settings,about}`, `dialog-{password,rename}`, `toast`. The README uses them; a
   new window or page goes into `Snapshot.cs`. No real path or note may show in a picture.
 - The Windows publish (win-x64) is a **trimmed** single file (`TrimMode=partial`, about 35 MB). `ThixNote.exe --self-test
   <report>` checks the published program (JSON, encryption, export, the embedded document icon, COM, every window); CI runs it.
@@ -45,7 +45,8 @@ setup, update and tests; MatDesign (`../MatDesign`, docs/DESKTOP.md) holds the r
 
 ```
 src/ThixNote.Core       (no UI) models, business layer (static classes), infrastructure
-  Models/               NoteFile, AppSettings (record: notes folder, tabs, favourites, window, theme, zoom, word wrap, updates),
+  Models/               NoteFile, AppSettings (record: notes folder, tabs, favourites, window, compact view, theme, zoom, word
+                        wrap, updates),
                         Exceptions (BusinessException with Field, InvalidPassword, InvalidNoteFile), ExportFormat, EncryptionKey
   Business/             NoteLibrary (files, folders, rename, trash), NoteContent (read/write/protect/unprotect), NoteEncryption,
                         EncryptionSession (keys of unlocked notes in memory), AccessGuard (permission checks), NoteExporter,
@@ -60,11 +61,12 @@ src/ThixNote            (Avalonia app)
   Program / App         start-up: ProblemReports, self test, snapshot, Windows setup mode (--update [--restart], --quiet,
                         --uninstall), single instance (MatSingleInstance hands files to the running one), UpdateCoordinator;
                         ExitApplication saves and starts a downloaded update; InstallUpdateNowAsync
-  MainWindow            MatWindow: MatTitleBar (logo + word mark, the search in the middle; narrow: the tabs), MatNav (Alle Notizen,
+  MainWindow            MatWindow: MatTitleBar (logo + word mark, the TABS of NotesPage), MatNav (Alle Notizen,
                         Favoriten, the folders, Settings; foot: new folder, notes folder; version = About), page host; ALL shortcuts
-                        (OnPreviewKeyDown); ApplyCompact switches to the Notepad layout below 900 px
-  Pages/                NotesPage (list of MatCardRow cards + editor: tabs, format bar, text, status bar; the Markdown helpers),
-                        TabStrip (moves between the editor and the title bar), SettingsPage (Allgemein | Updates | Erweitert),
+                        (OnPreviewKeyDown); ApplyLayout switches to the Notepad layout (compact view, or below 900 px)
+  Pages/                NotesPage (search + list of MatCardRow cards; editor: format bar – it sheds groups when narrow –, text,
+                        status bar; the Markdown helpers),
+                        TabStrip (shown in the title bar), SettingsPage (Allgemein | Updates | Erweitert),
                         AboutPage
   ViewModels/           NotesViewModel (list, view, search, tabs, commands), DocumentViewModel (one tab: autosave, title from the
                         first line, caret for the status bar, lock/unlock), LibraryItemViewModel

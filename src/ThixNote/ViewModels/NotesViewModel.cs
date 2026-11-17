@@ -38,8 +38,14 @@ public sealed partial class NotesViewModel : ObservableObject
     [ObservableProperty] private string listTitle = "Alle Notizen";
     [ObservableProperty] private string listSubtitle = string.Empty;
 
-    /// <summary>The window is narrow: ThixNote is a small editor like Notepad (tabs in the title bar, the list as an overlay).</summary>
+    /// <summary>ThixNote is a small editor like Notepad (no menu, the list over the editor): the compact view, or a narrow window.</summary>
     [ObservableProperty] private bool isCompact;
+
+    /// <summary>The compact view was chosen (Ctrl/Cmd+Shift+K, remembered); MainWindow lays the window out for it.</summary>
+    [ObservableProperty] private bool isCompactMode;
+
+    /// <summary>The window is narrower than 900 px: the status bar leaves out the characters and the encoding.</summary>
+    [ObservableProperty] private bool isNarrow;
 
     /// <summary>The list next to the editor (wide) or over it (compact) is shown.</summary>
     [ObservableProperty] private bool isListOpen;
@@ -53,6 +59,7 @@ public sealed partial class NotesViewModel : ObservableObject
         zoom = settings.EditorZoom;
         wordWrap = settings.WordWrap;
         isListOpen = !settings.IsListHidden;
+        isCompactMode = settings.IsCompactMode;
         PrepareNotesFolder();
         RefreshLibrary();
         RestoreSession();
@@ -164,6 +171,8 @@ public sealed partial class NotesViewModel : ObservableObject
     }
 
     partial void OnIsCompactChanged(bool value) => IsListOpen = !value && !SettingsService.Get().IsListHidden;
+
+    partial void OnIsCompactModeChanged(bool value) => SettingsService.Remember(settings => settings with { IsCompactMode = value });
 
     partial void OnZoomChanged(int value)
     {
@@ -410,6 +419,9 @@ public sealed partial class NotesViewModel : ObservableObject
             SettingsService.Remember(settings => settings with { IsListHidden = !IsListOpen });
         }
     }
+
+    [RelayCommand]
+    private void ToggleCompactMode() => IsCompactMode = !IsCompactMode;
 
     [RelayCommand]
     private void ZoomIn() => Zoom = Math.Min(SettingsService.MaxZoom, Zoom + 10);

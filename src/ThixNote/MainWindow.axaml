@@ -5,19 +5,17 @@
                Title="ThixNote" Width="1180" Height="760" MinWidth="420" MinHeight="320"
                WindowStartupLocation="CenterScreen">
   <!--
-    The one window of ThixNote, in MatDesktop's chrome (like ThixClip): the title bar (DESK-03: logo and word mark, the search
-    in the middle, the caption buttons on Windows, the traffic lights on macOS), the menu (DESK-04: Alle Notizen, Favoriten,
-    the folders, Settings below a line; at its foot "Neuer Ordner" and the notes folder, the version = About, the fold to a
-    rail) and the page (notes, settings, about).
-    Narrower than 900 px ThixNote is a small editor like Notepad: no menu, the tabs in the title bar, the list over the editor.
+    The one window of ThixNote, in MatDesktop's chrome (like ThixClip) and laid out like Notepad: the title bar (DESK-03: logo
+    and word mark, the TABS of the open notes, the caption buttons on Windows, the traffic lights on macOS), the menu (DESK-04:
+    Alle Notizen, Favoriten, the folders, Settings below a line; at its foot "Neuer Ordner" and the notes folder, the version =
+    About, the fold to a rail) and the page (notes – with the formatting bar right below the tabs –, settings, about).
+    In the compact view (Ctrl/Cmd+Shift+K) and in a window narrower than 900 px ThixNote is Notepad: the logo and the tabs in
+    the title bar, the formatting bar, the text, the status bar – no menu, the list over the editor.
   -->
   <Grid RowDefinitions="Auto,*">
     <mat:MatTitleBar x:Name="TitleBar" AppName="ThixNote">
       <mat:MatTitleBar.Center>
-        <ContentControl x:Name="TitleCenter" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center">
-          <TextBox x:Name="SearchBox" Theme="{StaticResource MatSearchBox}" MaxWidth="620" HorizontalAlignment="Stretch"
-                   Watermark="Notizen durchsuchen" AutomationProperties.Name="Notizen durchsuchen" />
-        </ContentControl>
+        <ContentControl x:Name="TitleCenter" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" />
       </mat:MatTitleBar.Center>
     </mat:MatTitleBar>
 

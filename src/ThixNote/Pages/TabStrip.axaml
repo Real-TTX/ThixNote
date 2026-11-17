@@ -6,7 +6,7 @@
              x:DataType="vm:NotesViewModel">
   <!--
     The tabs of the open notes (the title of a note is its tab: a double click or F2 renames it) and "+" for a new one.
-    Wide, the strip sits above the editor; in a narrow window it moves into the title bar, as in Notepad (MainWindow).
+    The strip lives in the title bar of MainWindow, as in Notepad.
   -->
   <DockPanel HorizontalAlignment="Left" LastChildFill="True">
     <Button DockPanel.Dock="Right" x:Name="NewTabButton" Theme="{StaticResource MatButton.Icon}" Margin="4,0,0,0" VerticalAlignment="Center"

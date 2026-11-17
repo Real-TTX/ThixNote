@@ -52,7 +52,7 @@ public static class SettingsService
         return Update(settings => settings with { NotesFolder = NoteLibrary.IsSamePath(full, AppPaths.DefaultNotesFolder) ? string.Empty : full });
     }
 
-    /// <summary>Things the app remembers by itself (window size, tabs, favourites, folded menu, zoom): no configuration lock.</summary>
+    /// <summary>Things the app remembers by itself (window size, tabs, favourites, folded menu, compact view, zoom): no configuration lock.</summary>
     public static AppSettings Remember(Func<AppSettings, AppSettings> change)
     {
         var current = SettingsStore.Read();
@@ -63,6 +63,7 @@ public static class SettingsService
             WindowHeight = Math.Clamp(next.WindowHeight, 320, 3000),
             IsSidebarCollapsed = next.IsSidebarCollapsed,
             IsListHidden = next.IsListHidden,
+            IsCompactMode = next.IsCompactMode,
             Favorites = next.Favorites,
             OpenFiles = next.OpenFiles,
             ActiveFile = next.ActiveFile,

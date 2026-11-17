@@ -2,7 +2,7 @@
 
 # ThixNote
 
-Eine bewusst einfache Notiz-App für Windows und macOS (C#, Avalonia mit MatDesktop). Jede Notiz ist eine normale Datei. Breit gezogen ist ThixNote eine kleine Notizbibliothek, schmal gezogen ein Editor mit Tabs wie Notepad. Aufbau, Setup und Updates folgen ThixClip und den Desktop-Regeln von MatDesign (DESK, SETUP).
+Eine bewusst einfache Notiz-App für Windows und macOS (C#, Avalonia mit MatDesktop). Jede Notiz ist eine normale Datei. Aufgebaut wie Notepad: die Tabs in der Titelleiste, darunter die Formatierungsleiste, der Text und die Statusleiste. Daneben eine kleine Notizbibliothek, die in der Kompaktansicht ganz verschwindet. Aufbau, Setup und Updates folgen ThixClip und den Desktop-Regeln von MatDesign (DESK, SETUP).
 
 ![ThixNote mit Notizbibliothek und Editor](docs/images/main-notes-light.png)
 
@@ -12,13 +12,13 @@ Eine bewusst einfache Notiz-App für Windows und macOS (C#, Avalonia mit MatDesk
 |---|---|
 | ![Vorschau einer Notiz mit Tabelle und Aufgaben](docs/images/main-preview-light.png) | ![ThixNote im dunklen Erscheinungsbild](docs/images/main-notes-dark.png) |
 
-| Schmal wie Notepad | Kennwortgeschützte Notiz |
+| Kompaktansicht wie Notepad | Kennwortgeschützte Notiz |
 |---|---|
-| ![Kompakter Editor: Tabs in der Titelleiste, Formatierungsleiste, Text, Statusleiste](docs/images/main-compact-light.png) | ![Gesperrte .txts-Notiz mit Kennwortabfrage](docs/images/main-locked-light.png) |
+| ![Kompaktansicht: Tabs in der Titelleiste, Formatierungsleiste, Text, Statusleiste](docs/images/main-compact-light.png) | ![Gesperrte .txts-Notiz mit Kennwortabfrage](docs/images/main-locked-light.png) |
 
 | Einstellungen | Setup (Windows) |
 |---|---|
-| ![Einstellungen mit Erscheinungsbild, Notizordner, Zeilenumbruch und Textgröße](docs/images/main-settings-light.png) | ![Optionen des Setups](docs/images/setup-options-light.png) |
+| ![Einstellungen mit Erscheinungsbild, Notizordner, Kompaktansicht, Zeilenumbruch und Textgröße](docs/images/main-settings-light.png) | ![Optionen des Setups](docs/images/setup-options-light.png) |
 
 Alle Bilder in [`docs/images`](docs/images) gibt es hell und dunkel. Sie entstehen mit `ThixNote --snapshot` aus Beispielnotizen.
 
@@ -56,9 +56,9 @@ Administratoren können per Richtlinie eingreifen: Windows `HKLM\SOFTWARE\Polici
   - `.txt`: reiner Text
   - `.txts`: mit Kennwort verschlüsselt (AES-256-GCM, Schlüssel per PBKDF2-SHA256 mit 600 000 Iterationen)
 - **Der Titel steht im Tab, nicht im Text.** Umbenennen geht mit F2 oder einem Doppelklick auf den Tab. Eine neue Notiz heißt nach ihrer ersten Zeile, bis du sie selbst umbenennst.
-- **Aufgebaut wie Notepad:** Tabs, darunter eine Formatierungsleiste über die ganze Breite, dann nur der Text, unten die Statusleiste mit Zeile, Spalte, Wörtern, Zeichen, Typ und Zoom.
-  - Die Formatierungsleiste bietet Überschrift, Fett, Kursiv, Durchgestrichen, Listen, Aufgaben, Link und Code. Bei `.txt` ist sie ausgegraut.
-- **Schmales Fenster** (unter 900 px): Das Menü verschwindet, die Tabs wandern in die Titelleiste, die Notizliste öffnet sich über dem Editor (Strg+F oder das Seitenleisten-Symbol).
+- **Aufgebaut wie Notepad:** Die Tabs stehen in der Titelleiste, direkt darunter die Formatierungsleiste, dann nur der Text, unten die Statusleiste mit Zeile, Spalte, Wörtern, Zeichen, Typ und Zoom. Die Suche steht über der Notizliste.
+  - Die Formatierungsleiste bietet Überschrift, Fett, Kursiv, Durchgestrichen, Listen, Aufgaben, Link und Code. Bei `.txt` ist sie ausgegraut. Wird der Editor schmal, rückt sie zusammen.
+- **Kompaktansicht** (Strg+Umschalt+K, „Mehr“-Menü oder Einstellungen; unter 900 px Fensterbreite immer): ThixNote ist dann Notepad, nur Logo und Tabs in der Titelleiste, Formatierungsleiste, Text und Statusleiste. Das Menü verschwindet, die Notizliste öffnet sich über dem Editor (Strg+F oder das Seitenleisten-Symbol). ThixNote merkt sich die Ansicht.
 - **Wie Notepad nutzbar:** Doppelklick auf `.txts`, `.md` oder `.txt` öffnet die Datei in ThixNote. Läuft ThixNote schon, kommt sie als neuer Tab ins offene Fenster. Drag & Drop geht auch.
 - **Tabs** werden beim nächsten Start wiederhergestellt. Verschlüsselte Tabs sind dann wieder gesperrt.
 - **Kennwortschutz:** Eine `.txts` fragt im Tab nach dem Kennwort. Das Kennwort selbst wird nie gespeichert, nur der abgeleitete Schlüssel bleibt im Arbeitsspeicher, solange die Notiz entsperrt ist.
@@ -83,6 +83,7 @@ Administratoren können per Richtlinie eingreifen: Windows `HKLM\SOFTWARE\Polici
 | Strg+1 / Strg+2 | Alle Notizen / Favoriten |
 | Strg+Umschalt+L | Notizliste ein- und ausblenden |
 | Strg+Umschalt+B | Menü einklappen |
+| Strg+Umschalt+K | Kompaktansicht ein und aus |
 | Strg+, | Einstellungen |
 
 ## Umstieg von QuickNote

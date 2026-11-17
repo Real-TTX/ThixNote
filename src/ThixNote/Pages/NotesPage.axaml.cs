@@ -13,9 +13,9 @@ using ThixNote.ViewModels;
 namespace ThixNote.Pages;
 
 /// <summary>
-/// The notes page: the list and the editor (Notepad's layout: tabs, the formatting bar, the text, the status bar). The
-/// formatting buttons put Markdown around the selection or in front of the line; the editor reports the caret for the
-/// status bar. In a narrow window the list opens over the editor and the tabs move into the title bar (MainWindow).
+/// The notes page: the list (with the search) and the editor (Notepad's layout: the formatting bar, the text, the status bar;
+/// the tabs are in the title bar of MainWindow). The formatting buttons put Markdown around the selection or in front of the
+/// line; the editor reports the caret for the status bar. Compact (MainWindow.ApplyLayout) the list opens over the editor.
 /// </summary>
 public partial class NotesPage : UserControl
 {
@@ -34,7 +34,6 @@ public partial class NotesPage : UserControl
         ViewModel = viewModel;
         DataContext = viewModel;
         Tabs = new TabStrip { DataContext = viewModel };
-        TabHost.Content = Tabs;
         Preview.MarkdownStyleName = "FluentTheme";
         ListPane.Width = ListWidth;
         Root.ColumnDefinitions[0].Width = GridLength.Auto;
@@ -54,6 +53,7 @@ public partial class NotesPage : UserControl
         ZoomResetItem.InputGesture = Gesture(Key.D0);
         CloseTabItem.InputGesture = Gesture(Key.W);
         SettingsItem.InputGesture = Gesture(Key.OemComma);
+        CompactModeItem.InputGesture = new KeyGesture(Key.K, (OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control) | KeyModifiers.Shift);
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         viewModel.EditorFocusRequested += FocusEditor;
@@ -67,19 +67,20 @@ public partial class NotesPage : UserControl
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
         ApplyWordWrap();
+        FormatBar.SizeChanged += (_, e) => FitFormatBar(e.NewSize.Width);
         Attach(viewModel.ActiveDocument);
         RefreshFavorite();
         AttachedToVisualTree += (_, _) => FocusEditor(); // at start: the text of the restored tab (or its password)
     }
 
-    /// <summary>"Einstellungen …" and "Über ThixNote" of the more menu (in a narrow window the menu at the left is not there).</summary>
+    /// <summary>"Einstellungen …" and "Über ThixNote" of the more menu (in the compact view the menu at the left is not there).</summary>
     public event EventHandler? SettingsRequested;
 
     public event EventHandler? AboutRequested;
 
     public NotesViewModel ViewModel { get; }
 
-    /// <summary>The tabs; MainWindow moves them into the title bar in a narrow window.</summary>
+    /// <summary>The tabs; MainWindow shows them in its title bar, as Notepad does.</summary>
     public TabStrip Tabs { get; }
 
     /// <summary>The text area (tests, focus).</summary>
@@ -87,25 +88,20 @@ public partial class NotesPage : UserControl
 
     public ListBox Notes => NoteList;
 
-    /// <summary>The search field of the list (shown in a narrow window, where the title bar holds the tabs).</summary>
-    public TextBox CompactSearch => ListSearch;
+    /// <summary>The search field above the list (Ctrl/Cmd+F).</summary>
+    public TextBox SearchBox => ListSearch;
 
-    /// <summary>Wide: the list beside the editor, the tabs above it. Narrow (Notepad): the list over the editor, the tabs elsewhere.</summary>
+    /// <summary>
+    /// Wide: the list beside the editor. Compact (the compact view or a narrow window, Notepad): the list over the editor.
+    /// <paramref name="windowWidth"/> below 900 px also shortens the status bar.
+    /// </summary>
     public void ApplyCompact(bool compact, double windowWidth)
     {
         ViewModel.IsCompact = compact;
+        ViewModel.IsNarrow = windowWidth < MatNav.NarrowWindow;
         Grid.SetColumn(ListPane, compact ? 1 : 0);
         ListPane.HorizontalAlignment = compact ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
         ListPane.Width = compact ? Math.Min(ListWidth, Math.Max(240, windowWidth - 48)) : ListWidth;
-        TabBar.IsVisible = !compact;
-        if (compact)
-        {
-            TabHost.Content = null;
-        }
-        else if (Tabs.Parent is null)
-        {
-            TabHost.Content = Tabs;
-        }
     }
 
     public void FocusEditor() => Dispatcher.UIThread.Post(() =>
@@ -218,6 +214,18 @@ public partial class NotesPage : UserControl
         var favorite = ViewModel.IsActiveFavorite;
         FavoriteIcon.IsFilled = favorite;
         FavoriteIcon.Use(MatIcon.ForegroundProperty, favorite ? "Mat.AccentText" : "Mat.TextMuted");
+    }
+
+    /// <summary>
+    /// A narrow editor (the list and the menu beside it, a small window) keeps its bar on one line: first the preview button
+    /// loses its word, then link and code, the lists and strike-through go – B, I and the headings always stay.
+    /// </summary>
+    private void FitFormatBar(double width)
+    {
+        PreviewLabel.IsTextVisible = EditLabel.IsTextVisible = width >= 640;
+        InsertGroup.IsVisible = InsertDivider.IsVisible = width >= 540;
+        ListsGroup.IsVisible = ListsDivider.IsVisible = width >= 440;
+        StrikeButton.IsVisible = width >= 400;
     }
 
     private void ApplyWordWrap() => Editor.TextWrapping = ViewModel.WordWrap ? TextWrapping.Wrap : TextWrapping.NoWrap;

@@ -9,10 +9,10 @@
              x:DataType="vm:NotesViewModel"
              DragDrop.AllowDrop="True">
   <!--
-    The notes: the list of the library at the left (cards like the history of ThixClip) and the editor at the right, laid out
-    like Notepad: the tabs, ONE formatting bar across the whole width, then nothing but the text, and the status bar below.
-    The title of a note is its tab (its file name), never part of the text. In a narrow window (MainWindow.ApplyCompact) the
-    tabs move into the title bar and the list opens over the editor.
+    The notes: the list of the library at the left (cards like the history of ThixClip, with the search) and the editor at the
+    right, laid out like Notepad: the tabs in the title bar (MainWindow), ONE formatting bar right below it, then nothing but the
+    text, and the status bar. The title of a note is its tab (its file name), never part of the text. In the compact view or a
+    narrow window (MainWindow.ApplyLayout) there is no menu and the list opens over the editor.
   -->
   <Grid x:Name="Root" ColumnDefinitions="340,*">
 
@@ -31,7 +31,7 @@
           </Button>
         </Grid>
         <TextBox Grid.Row="1" x:Name="ListSearch" Theme="{StaticResource MatSearchBox}" Margin="16,0,16,12" Watermark="Notizen durchsuchen"
-                 Text="{Binding SearchText}" IsVisible="{Binding IsCompact}" AutomationProperties.Name="Notizen durchsuchen" />
+                 Text="{Binding SearchText}" AutomationProperties.Name="Notizen durchsuchen" />
         <ListBox Grid.Row="2" x:Name="NoteList" Theme="{StaticResource MatList}" ItemContainerTheme="{StaticResource MatCardRow}" Padding="16,0,16,8"
                  ItemsSource="{Binding LibraryItems}" SelectedItem="{Binding SelectedLibraryItem}" AutomationProperties.Name="Notizen">
           <ListBox.ItemTemplate>
@@ -57,28 +57,17 @@
     </Border>
 
     <!-- ===== The editor ===== -->
-    <Grid x:Name="EditorColumn" Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto" Background="{DynamicResource Mat.Surface}">
+    <Grid x:Name="EditorColumn" Grid.Column="1" RowDefinitions="Auto,*,Auto" Background="{DynamicResource Mat.Surface}">
 
-      <!-- the tabs (in a narrow window they are in the title bar) -->
-      <Border x:Name="TabBar" Classes="bar" BorderThickness="0,0,0,1" Padding="8,6" Background="{DynamicResource Mat.Surface2}">
-        <Grid ColumnDefinitions="Auto,*">
-          <Button x:Name="ListToggle" Theme="{StaticResource MatButton.Icon}" Margin="0,0,6,0" VerticalAlignment="Center"
-                  Command="{Binding ToggleListCommand}" AutomationProperties.Name="Notizliste">
-            <mat:MatIcon Icon="sidebar" Size="16" />
-          </Button>
-          <ContentControl Grid.Column="1" x:Name="TabHost" VerticalAlignment="Center" />
-        </Grid>
-      </Border>
-
-      <!-- the formatting bar: across the whole width, never part of the text -->
-      <Border Grid.Row="1" x:Name="FormatBar" Classes="bar" BorderThickness="0,0,0,1" Padding="8,4" IsVisible="{Binding !ShowEmptyState}">
+      <!-- the formatting bar: right below the tabs of the title bar, across the editor, never part of the text -->
+      <Border x:Name="FormatBar" Classes="bar" BorderThickness="0,0,0,1" Padding="8,4">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-            <Button x:Name="CompactListToggle" Classes="format" Theme="{StaticResource MatButton.Ghost}" Command="{Binding ToggleListCommand}"
-                    IsVisible="{Binding IsCompact}" AutomationProperties.Name="Notizliste" ToolTip.Tip="Notizliste">
+            <Button x:Name="ListToggle" Classes="format" Theme="{StaticResource MatButton.Ghost}" Command="{Binding ToggleListCommand}"
+                    AutomationProperties.Name="Notizliste">
               <mat:MatIcon Icon="sidebar" Size="16" />
             </Button>
-            <Rectangle Classes="divider" IsVisible="{Binding IsCompact}" />
+            <Rectangle Classes="divider" />
             <StackPanel x:Name="FormatGroup" Orientation="Horizontal" Spacing="2" IsEnabled="{Binding ActiveDocument.CanFormat, FallbackValue=False}">
               <Button x:Name="HeadingButton" Classes="format" Theme="{StaticResource MatButton.Ghost}" AutomationProperties.Name="Absatzformat" ToolTip.Tip="Überschrift, Zitat, Code">
                 <StackPanel Orientation="Horizontal" Spacing="4">
@@ -106,23 +95,27 @@
               <Button x:Name="StrikeButton" Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnStrikeClick" AutomationProperties.Name="Durchgestrichen" ToolTip.Tip="Durchgestrichen">
                 <TextBlock Text="S" TextDecorations="Strikethrough" FontWeight="SemiBold" />
               </Button>
-              <Rectangle Classes="divider" />
-              <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnListClick" AutomationProperties.Name="Liste" ToolTip.Tip="Liste">
-                <mat:MatIcon Icon="list" Size="16" />
-              </Button>
-              <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnNumberedClick" AutomationProperties.Name="Nummerierte Liste" ToolTip.Tip="Nummerierte Liste">
-                <TextBlock Text="1." FontWeight="SemiBold" />
-              </Button>
-              <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnTaskClick" AutomationProperties.Name="Aufgabe" ToolTip.Tip="Aufgabe">
-                <mat:MatIcon Icon="list-checks" Size="16" />
-              </Button>
-              <Rectangle Classes="divider" />
-              <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnLinkClick" AutomationProperties.Name="Link" ToolTip.Tip="Link">
-                <mat:MatIcon Icon="link" Size="16" />
-              </Button>
-              <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnCodeClick" AutomationProperties.Name="Code" ToolTip.Tip="Code">
-                <mat:MatIcon Icon="code" Size="16" />
-              </Button>
+              <Rectangle x:Name="ListsDivider" Classes="divider" />
+              <StackPanel x:Name="ListsGroup" Orientation="Horizontal" Spacing="2">
+                <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnListClick" AutomationProperties.Name="Liste" ToolTip.Tip="Liste">
+                  <mat:MatIcon Icon="list" Size="16" />
+                </Button>
+                <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnNumberedClick" AutomationProperties.Name="Nummerierte Liste" ToolTip.Tip="Nummerierte Liste">
+                  <TextBlock Text="1." FontWeight="SemiBold" />
+                </Button>
+                <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnTaskClick" AutomationProperties.Name="Aufgabe" ToolTip.Tip="Aufgabe">
+                  <mat:MatIcon Icon="list-checks" Size="16" />
+                </Button>
+              </StackPanel>
+              <Rectangle x:Name="InsertDivider" Classes="divider" />
+              <StackPanel x:Name="InsertGroup" Orientation="Horizontal" Spacing="2">
+                <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnLinkClick" AutomationProperties.Name="Link" ToolTip.Tip="Link">
+                  <mat:MatIcon Icon="link" Size="16" />
+                </Button>
+                <Button Classes="format" Theme="{StaticResource MatButton.Ghost}" Click="OnCodeClick" AutomationProperties.Name="Code" ToolTip.Tip="Code">
+                  <mat:MatIcon Icon="code" Size="16" />
+                </Button>
+              </StackPanel>
             </StackPanel>
           </StackPanel>
 
@@ -131,14 +124,16 @@
             <Button x:Name="PreviewButton" Classes="format" Theme="{StaticResource MatButton.Ghost}" Command="{Binding ActiveDocument.TogglePreviewCommand}"
                     IsVisible="{Binding ActiveDocument.IsMarkdown, FallbackValue=False}" AutomationProperties.Name="Vorschau">
               <Panel>
-                <controls:IconLabel Icon="eye" Text="Vorschau" IsVisible="{Binding !ActiveDocument.IsPreview, FallbackValue=True}" />
-                <controls:IconLabel Icon="edit" Text="Bearbeiten" IsVisible="{Binding ActiveDocument.IsPreview, FallbackValue=False}" />
+                <controls:IconLabel x:Name="PreviewLabel" Icon="eye" Text="Vorschau" IsVisible="{Binding !ActiveDocument.IsPreview, FallbackValue=True}" />
+                <controls:IconLabel x:Name="EditLabel" Icon="edit" Text="Bearbeiten" IsVisible="{Binding ActiveDocument.IsPreview, FallbackValue=False}" />
               </Panel>
             </Button>
-            <Button x:Name="FavoriteButton" Classes="format" Theme="{StaticResource MatButton.Ghost}" Command="{Binding ToggleFavoriteCommand}" AutomationProperties.Name="Favorit">
+            <Button x:Name="FavoriteButton" Classes="format" Theme="{StaticResource MatButton.Ghost}" Command="{Binding ToggleFavoriteCommand}" AutomationProperties.Name="Favorit"
+                    IsVisible="{Binding !ShowEmptyState}">
               <mat:MatIcon x:Name="FavoriteIcon" Icon="star" Size="16" />
             </Button>
-            <Button x:Name="LockButton" Classes="format" Theme="{StaticResource MatButton.Ghost}" AutomationProperties.Name="Kennwortschutz" ToolTip.Tip="Kennwortschutz">
+            <Button x:Name="LockButton" Classes="format" Theme="{StaticResource MatButton.Ghost}" AutomationProperties.Name="Kennwortschutz" ToolTip.Tip="Kennwortschutz"
+                    IsVisible="{Binding !ShowEmptyState}">
               <mat:MatIcon Icon="lock" Size="16" />
               <Button.Flyout>
                 <MenuFlyout Placement="BottomEdgeAlignedRight">
@@ -162,6 +157,11 @@
                     <MenuItem Header="Als Text (.txt) …" Command="{Binding ExportCommand}" CommandParameter="PlainText" />
                   </MenuItem>
                   <Separator />
+                  <MenuItem x:Name="CompactModeItem" Header="Kompaktansicht" Command="{Binding ToggleCompactModeCommand}">
+                    <MenuItem.Icon>
+                      <mat:MatIcon Icon="check" Size="14" IsVisible="{Binding IsCompactMode}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
                   <MenuItem Header="Zeilenumbruch" Command="{Binding ToggleWordWrapCommand}">
                     <MenuItem.Icon>
                       <mat:MatIcon Icon="check" Size="14" IsVisible="{Binding WordWrap}" />
@@ -184,10 +184,10 @@
       </Border>
 
       <!-- nothing open -->
-      <StackPanel Grid.Row="2" x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14" IsVisible="{Binding ShowEmptyState}">
+      <StackPanel Grid.Row="1" x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14" IsVisible="{Binding ShowEmptyState}">
         <Image Source="avares://ThixNote/Assets/logo.png" Width="80" Height="80" HorizontalAlignment="Center" RenderOptions.BitmapInterpolationMode="HighQuality" />
         <TextBlock Text="Keine Notiz geöffnet" Theme="{StaticResource MatText.SectionTitle}" HorizontalAlignment="Center" />
-        <TextBlock Text="Wähle links eine Notiz oder fang eine neue an." Theme="{StaticResource MatText.Muted}" HorizontalAlignment="Center" />
+        <TextBlock Text="Wähle eine Notiz aus der Liste oder fang eine neue an." Theme="{StaticResource MatText.Muted}" HorizontalAlignment="Center" />
         <controls:ActionBar HorizontalAlignment="Center">
           <Button Theme="{StaticResource MatButton.Primary}" Command="{Binding NewNoteCommand}">
             <controls:IconLabel Icon="plus" Text="Neue Notiz" />
@@ -199,7 +199,7 @@
       </StackPanel>
 
       <!-- a locked note: the password, in the place of the text -->
-      <Border Grid.Row="2" x:Name="UnlockCard" Theme="{StaticResource MatCard}" Width="380" Padding="28,24" VerticalAlignment="Center" HorizontalAlignment="Center"
+      <Border Grid.Row="1" x:Name="UnlockCard" Theme="{StaticResource MatCard}" Width="380" Padding="28,24" VerticalAlignment="Center" HorizontalAlignment="Center"
               IsVisible="{Binding ActiveDocument.IsLocked, FallbackValue=False}">
         <StackPanel Spacing="12">
           <mat:MatIcon Icon="lock" Size="32" HorizontalAlignment="Center" Foreground="{DynamicResource Mat.AccentText}" />
@@ -223,11 +223,11 @@
       </Border>
 
       <!-- the text, and nothing else -->
-      <TextBox Grid.Row="2" x:Name="Editor" Classes="editor" Text="{Binding ActiveDocument.Text}" AcceptsReturn="True" AcceptsTab="True"
+      <TextBox Grid.Row="1" x:Name="Editor" Classes="editor" Text="{Binding ActiveDocument.Text}" AcceptsReturn="True" AcceptsTab="True"
                FontSize="{Binding EditorFontSize}" Watermark="Einfach losschreiben …" AutomationProperties.Name="Text der Notiz"
                ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
                IsVisible="{Binding ActiveDocument.ShowTextEditor, FallbackValue=False}" />
-      <Border Grid.Row="2" x:Name="PreviewHost" Classes="preview" IsVisible="{Binding ActiveDocument.ShowPreview, FallbackValue=False}">
+      <Border Grid.Row="1" x:Name="PreviewHost" Classes="preview" IsVisible="{Binding ActiveDocument.ShowPreview, FallbackValue=False}">
         <md:MarkdownScrollViewer x:Name="Preview" Markdown="{Binding ActiveDocument.PreviewText}" Margin="28,16,28,24">
           <!-- the preview in the colours of the theme (Markdown.Avalonia has colours of its own) -->
           <md:MarkdownScrollViewer.Styles>
@@ -266,7 +266,7 @@
       </Border>
 
       <!-- the status bar: what Notepad shows -->
-      <Border Grid.Row="3" x:Name="StatusBar" Classes="bar status" BorderThickness="0,1,0,0" Padding="16,0" Height="30" Background="{DynamicResource Mat.Surface2}"
+      <Border Grid.Row="2" x:Name="StatusBar" Classes="bar status" BorderThickness="0,1,0,0" Padding="16,0" Height="30" Background="{DynamicResource Mat.Surface2}"
               IsVisible="{Binding !ShowEmptyState}">
         <Grid ColumnDefinitions="*,Auto">
           <TextBlock x:Name="StatusText" Text="{Binding ActiveDocument.StatusText}" TextTrimming="CharacterEllipsis" />
@@ -275,13 +275,13 @@
             <Rectangle Classes="divider" />
             <TextBlock Text="{Binding ActiveDocument.WordCountText}" />
             <Rectangle Classes="divider" />
-            <TextBlock Text="{Binding ActiveDocument.CharacterCountText}" IsVisible="{Binding !IsCompact}" />
-            <Rectangle Classes="divider" IsVisible="{Binding !IsCompact}" />
+            <TextBlock Text="{Binding ActiveDocument.CharacterCountText}" IsVisible="{Binding !IsNarrow}" />
+            <Rectangle Classes="divider" IsVisible="{Binding !IsNarrow}" />
             <TextBlock Text="{Binding ActiveDocument.KindText}" />
             <Rectangle Classes="divider" />
             <TextBlock Text="{Binding ZoomText}" />
-            <Rectangle Classes="divider" IsVisible="{Binding !IsCompact}" />
-            <TextBlock Text="UTF-8" IsVisible="{Binding !IsCompact}" />
+            <Rectangle Classes="divider" IsVisible="{Binding !IsNarrow}" />
+            <TextBlock Text="UTF-8" IsVisible="{Binding !IsNarrow}" />
           </StackPanel>
         </Grid>
       </Border>

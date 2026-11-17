@@ -21,13 +21,14 @@ namespace ThixNote;
 /// The main window. Everything works with the keyboard (Ctrl on Windows, Cmd on macOS):
 ///   N / T new note, O open, S save, W close the tab, Tab / Shift+Tab (or PageDown / PageUp) the next / previous tab,
 ///   F / K search, E preview, D favourite, L lock, B / I bold / italic, F2 rename, + / - / 0 zoom,
-///   1 / 2 Alle Notizen / Favoriten, "," settings, Shift+L the note list, Shift+B fold the menu, Esc ends the search.
-/// The chrome is MatDesktop's: MatTitleBar (DESK-03) and MatNav (DESK-04). Narrower than 900 px the window is a small
-/// editor like Notepad: no menu, the tabs in the title bar, the note list over the editor.
+///   1 / 2 Alle Notizen / Favoriten, "," settings, Shift+L the note list, Shift+B fold the menu, Shift+K the compact view,
+///   Esc ends the search.
+/// The chrome is MatDesktop's: MatTitleBar (DESK-03) with the tabs, as in Notepad, and MatNav (DESK-04). In the compact view
+/// and narrower than 900 px the window is a small editor like Notepad: no menu, the note list over the editor.
 /// </summary>
 public partial class MainWindow : MatWindow
 {
-    /// <summary>Below this width of the window ThixNote is a small editor like Notepad.</summary>
+    /// <summary>Below this width of the window ThixNote is always a small editor like Notepad.</summary>
     public const double CompactWidth = MatNav.NarrowWindow;
 
     private static readonly FilePickerFileType NoteFileType = new("Notizen") { Patterns = ["*.md", "*.txt", "*.txts"] };
@@ -42,6 +43,7 @@ public partial class MainWindow : MatWindow
     private readonly IconLabel _newFolderLabel = new() { Icon = "plus", Text = "Neuer Ordner …" };
     private readonly IconLabel _notesFolderLabel = new() { Icon = "folder-open", Text = "Notizordner öffnen" };
     private bool _isCompact;
+    private bool _isLaidOut;
 
     public MainWindow()
     {
@@ -97,17 +99,17 @@ public partial class MainWindow : MatWindow
                 ShowNotes();
             }
         };
-        PageHost.Content = Notes;
-
-        SearchBox.Bind(TextBox.TextProperty, new Avalonia.Data.Binding(nameof(NotesViewModel.SearchText)) { Source = notes, Mode = Avalonia.Data.BindingMode.TwoWay });
-        SearchBox.TextChanged += (_, _) =>
+        // A click on a tab – the chosen one too – leads back from the settings to the text (the compact view has no menu).
+        Notes.Tabs.TabList.AddHandler(TappedEvent, (_, _) =>
         {
-            if (PageHost.Content != Notes && !string.IsNullOrEmpty(SearchBox.Text))
+            if (PageHost.Content != Notes)
             {
                 ShowNotes();
             }
-        };
-        ToolTip.SetTip(SearchBox, $"Suchen ({Ui.Shortcut("F")})");
+        }, RoutingStrategies.Bubble, handledEventsToo: true);
+        PageHost.Content = Notes;
+
+        TitleCenter.Content = Notes.Tabs; // the tabs in the title bar, as in Notepad
 
         _sizeTimer.Tick += (_, _) =>
         {
@@ -122,7 +124,7 @@ public partial class MainWindow : MatWindow
             _sizeTimer.Stop();
             _sizeTimer.Start();
         };
-        SizeChanged += (_, e) => ApplyCompact(e.NewSize.Width);
+        SizeChanged += (_, e) => ApplyLayout(e.NewSize.Width);
 
         UpdateCoordinator.Changed += (_, _) => Ui.Post(RefreshUpdate);
         RefreshUpdate();
@@ -138,7 +140,7 @@ public partial class MainWindow : MatWindow
 
     public NotesPage Notes { get; }
 
-    /// <summary>The window is a small editor like Notepad (narrower than 900 px).</summary>
+    /// <summary>The window is a small editor like Notepad: the compact view, or narrower than 900 px.</summary>
     public bool IsCompact => _isCompact;
 
     public bool IsSidebarCollapsed => Sidebar.IsFolded;
@@ -174,7 +176,7 @@ public partial class MainWindow : MatWindow
         PageHost.Content = _about.Value;
     }
 
-    /// <summary>Opens the search: the field of the title bar, in a narrow window the one above the list.</summary>
+    /// <summary>Opens the search above the list (in the compact view the list opens over the editor for it).</summary>
     public void FocusSearch()
     {
         if (PageHost.Content != Notes)
@@ -182,34 +184,33 @@ public partial class MainWindow : MatWindow
             ShowNotes();
         }
 
-        if (_isCompact)
+        Notes.ViewModel.IsListOpen = true;
+        Dispatcher.UIThread.Post(() =>
         {
-            Notes.ViewModel.IsListOpen = true;
-            Dispatcher.UIThread.Post(() => Notes.CompactSearch.Focus(), DispatcherPriority.Background);
-            return;
-        }
-
-        SearchBox.Focus();
-        SearchBox.SelectAll();
+            Notes.SearchBox.Focus();
+            Notes.SearchBox.SelectAll();
+        }, DispatcherPriority.Background);
     }
 
-    /// <summary>Wide: menu, list and editor. Narrow: Notepad – the tabs in the title bar, no menu, the list over the editor.</summary>
-    private void ApplyCompact(double width)
+    /// <summary>
+    /// Wide: menu, list and editor, the tabs in the title bar after the word mark. Compact (the compact view, or narrower than
+    /// 900 px): Notepad – the logo and the tabs in the title bar, no menu, the list over the editor.
+    /// </summary>
+    private void ApplyLayout(double width)
     {
-        var compact = width < CompactWidth;
+        var compact = Notes.ViewModel.IsCompactMode || width < CompactWidth;
         Notes.ApplyCompact(compact, width);
-        if (compact == _isCompact && TitleCenter.Content is not null)
+        if (compact == _isCompact && _isLaidOut)
         {
             return;
         }
 
+        _isLaidOut = true;
         _isCompact = compact;
         Sidebar.IsVisible = !compact;
         Sidebar.TitleBar = compact ? null : TitleBar;
         TitleBar.IsNameVisible = !compact;
         TitleBar.BrandWidth = compact ? 56 : MatNav.WidthFor(Sidebar.IsFolded, width);
-        TitleCenter.Content = compact ? Notes.Tabs : SearchBox;
-        TitleCenter.HorizontalContentAlignment = compact ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
         if (!compact)
         {
             Sidebar.ApplyWindowWidth(width);
@@ -302,6 +303,11 @@ public partial class MainWindow : MatWindow
         {
             ShowNotesSelectionOnly();
         }
+        else if (e.PropertyName is nameof(NotesViewModel.IsCompactMode))
+        {
+            ApplyLayout(ClientSize.Width > 0 ? ClientSize.Width : Width);
+            Notes.FocusEditor();
+        }
     }
 
     private void OnActiveDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -324,7 +330,7 @@ public partial class MainWindow : MatWindow
 
         if (e.Key == Key.Escape && modifiers == KeyModifiers.None)
         {
-            if (SearchBox.IsFocused || Notes.CompactSearch.IsFocused)
+            if (Notes.SearchBox.IsFocused)
             {
                 notes.SearchText = string.Empty;
                 if (_isCompact)
@@ -377,6 +383,7 @@ public partial class MainWindow : MatWindow
             (Key.L, false) => Act(() => notes.ActiveDocument?.LockCommand.Execute(null)),
             (Key.L, true) => Run(notes.ToggleListCommand),
             (Key.B, true) => Act(() => Sidebar.IsFolded = !Sidebar.IsFolded),
+            (Key.K, true) => Run(notes.ToggleCompactModeCommand),
             (Key.B, false) => Act(() => Notes.WrapSelection("**", "**")),
             (Key.I, false) => Act(() => Notes.WrapSelection("*", "*")),
             (Key.F or Key.K, false) => Act(FocusSearch),

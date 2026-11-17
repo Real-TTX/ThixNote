@@ -112,7 +112,7 @@ public sealed class UiTests
 
         window.KeyPressQwerty(PhysicalKey.F, CommandModifier);
         Settle(window);
-        Assert.True(window.SearchBox.IsFocused);
+        Assert.True(window.Notes.SearchBox.IsFocused);
         window.KeyTextInput("linsen");
         Settle(window);
         Assert.Equal("Rezept Linsensuppe", Assert.Single(notes.LibraryItems).Title);
@@ -147,27 +147,52 @@ public sealed class UiTests
     }
 
     [AvaloniaFact]
+    public void The_tabs_are_in_the_title_bar_and_the_search_above_the_list()
+    {
+        using var data = new TestData(withSampleNotes: true);
+        var window = Open(data, SampleNotes.Plan, SampleNotes.Shopping);
+        Assert.Same(window.Notes.Tabs, window.TitleCenter.Content);
+        Assert.True(window.Notes.Tabs.IsEffectivelyVisible);
+        Assert.True(window.Notes.SearchBox.IsEffectivelyVisible);
+
+        // Hidden list: Ctrl+F shows it for the search.
+        window.Notes.ViewModel.ToggleListCommand.Execute(null);
+        Settle(window);
+        Assert.False(window.Notes.SearchBox.IsEffectivelyVisible);
+        window.KeyPressQwerty(PhysicalKey.F, CommandModifier);
+        Settle(window);
+        Assert.True(window.Notes.SearchBox.IsFocused);
+
+        // From the settings a click on the chosen tab leads back to the text.
+        window.ShowSettings();
+        Settle(window);
+        window.Notes.Tabs.TabList.RaiseEvent(new TappedEventArgs(InputElement.TappedEvent, null!));
+        Settle(window);
+        Assert.Same(window.Notes, window.PageHost.Content);
+    }
+
+    [AvaloniaFact]
     public void A_narrow_window_is_a_small_editor_like_Notepad()
     {
         using var data = new TestData(withSampleNotes: true);
         var window = Open(data, SampleNotes.Plan, SampleNotes.Shopping);
         Assert.False(window.IsCompact);
-        Assert.Same(window.SearchBox, window.TitleCenter.Content);
 
         window.Width = 640;
         Settle(window);
         Assert.True(window.IsCompact);
+        Assert.True(window.Notes.ViewModel.IsNarrow);
         Assert.False(window.Sidebar.IsVisible);
         Assert.Same(window.Notes.Tabs, window.TitleCenter.Content);
         Assert.False(window.Notes.ViewModel.IsListOpen);
         Assert.True(window.Notes.FormatBar.IsVisible);
         Assert.True(window.Notes.StatusBar.IsVisible);
 
-        // Ctrl+F opens the list over the editor with its own search; Esc closes it again.
+        // Ctrl+F opens the list over the editor with its search; Esc closes it again.
         window.KeyPressQwerty(PhysicalKey.F, CommandModifier);
         Settle(window);
         Assert.True(window.Notes.ViewModel.IsListOpen);
-        Assert.True(window.Notes.CompactSearch.IsFocused);
+        Assert.True(window.Notes.SearchBox.IsFocused);
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Settle(window);
         Assert.False(window.Notes.ViewModel.IsListOpen);
@@ -176,8 +201,41 @@ public sealed class UiTests
         Settle(window);
         Assert.False(window.IsCompact);
         Assert.True(window.Sidebar.IsVisible);
-        Assert.Same(window.SearchBox, window.TitleCenter.Content);
         Assert.True(window.Notes.ViewModel.IsListOpen);
+    }
+
+    [AvaloniaFact]
+    public void The_compact_view_is_Notepad_at_any_width_and_is_remembered()
+    {
+        using var data = new TestData(withSampleNotes: true);
+        var window = Open(data, SampleNotes.Plan, SampleNotes.Shopping);
+        Assert.False(window.IsCompact);
+
+        window.KeyPressQwerty(PhysicalKey.K, CommandModifier | RawInputModifiers.Shift);
+        Settle(window);
+        Assert.True(window.IsCompact);
+        Assert.False(window.Notes.ViewModel.IsNarrow);
+        Assert.False(window.Sidebar.IsVisible);
+        Assert.False(window.Notes.ViewModel.IsListOpen);
+        Assert.True(window.Notes.EditorBox.IsFocused);
+        Assert.True(SettingsService.Get().IsCompactMode);
+
+        // The next start opens compact again.
+        window.IsExiting = true;
+        window.Close();
+        var next = new MainWindow { Width = 1180, Height = 760 };
+        next.Show();
+        Settle(next);
+        Assert.True(next.IsCompact);
+
+        next.KeyPressQwerty(PhysicalKey.K, CommandModifier | RawInputModifiers.Shift);
+        Settle(next);
+        Assert.False(next.IsCompact);
+        Assert.True(next.Sidebar.IsVisible);
+        Assert.True(next.Notes.ViewModel.IsListOpen);
+        Assert.False(SettingsService.Get().IsCompactMode);
+        next.IsExiting = true;
+        next.Close();
     }
 
     [AvaloniaFact]

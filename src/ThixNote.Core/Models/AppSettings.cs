@@ -34,6 +34,12 @@ public sealed record AppSettings
     /// <summary>The note list next to the editor hidden (Ctrl/Cmd+Shift+L): more room for writing.</summary>
     public bool IsListHidden { get; init; }
 
+    /// <summary>
+    /// The compact view (Ctrl/Cmd+Shift+K): ThixNote is a small editor like Notepad at any width – the tabs in the title
+    /// bar, the formatting bar, the text, the status bar; no menu, the list over the editor. Below 900 px it is always so.
+    /// </summary>
+    public bool IsCompactMode { get; init; }
+
     public ThemeChoice Theme { get; init; } = ThemeChoice.System;
 
     /// <summary>The text size of the editor in percent (zoom: Ctrl/Cmd + plus / minus / 0).</summary>
