@@ -453,7 +453,8 @@ public partial class SettingsPage : UserControl
         CloudStateText.Text = "Synchronisiere …";
     }
 
-    private void OnOpenCloudClick(object? sender, RoutedEventArgs e) => Ui.OpenExternal(SettingsService.Get().Cloud.ServerUrl);
+    /// <summary>The notes in the browser: the pages of ThixNote in MatCloud.</summary>
+    private void OnOpenCloudClick(object? sender, RoutedEventArgs e) => Ui.OpenExternal(SettingsService.Get().Cloud.ServerUrl.TrimEnd('/') + "/Note");
 
     private async void OnDisconnectClick(object? sender, RoutedEventArgs e)
     {

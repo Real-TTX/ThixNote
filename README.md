@@ -93,7 +93,7 @@ Administratoren können per Richtlinie eingreifen: Windows `HKLM\SOFTWARE\Polici
 
 ## Sync mit MatCloud
 
-Mit MatCloud, der Cloud der Thix-Apps (selbst betrieben, Docker), sind deine Notizen auf allen PCs und Macs gleich. ThixNote hat dort kein eigenes Modul, es legt seine Notizen in der allgemeinen Synchronisierung von MatCloud ab (App `note`).
+Mit MatCloud, der Cloud der Thix-Apps (selbst betrieben, Docker), sind deine Notizen auf allen PCs und Macs gleich – und im Browser unter `/Note` deiner MatCloud: lesen (Markdown als Seite), suchen, schreiben, umbenennen, verschieben, löschen; geschützte Notizen werden nur im Browser mit ihrem Kennwort geöffnet. ThixNote legt seine Notizen in der allgemeinen Synchronisierung von MatCloud ab (App `note`); die Seiten im Browser (Modul `MatCloud.Apps.Note`) lesen und schreiben dieselben Einträge. „Im Browser öffnen“ in Einstellungen › Cloud führt dorthin.
 
 **Verbinden:** Einstellungen › Cloud (Strg+, und dann der Tab „Cloud“, oder unten im Menü „Mit Cloud verbinden“).
 
