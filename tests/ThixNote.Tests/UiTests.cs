@@ -329,6 +329,54 @@ public sealed class UiTests
         }
     }
 
+    [AvaloniaFact]
+    public void A_note_on_the_command_line_opens_and_a_second_start_hands_its_note_to_the_running_ThixNote()
+    {
+        using var data = new TestData(withSampleNotes: true);
+        var plan = data.Notes[SampleNotes.Plan];
+        var shopping = data.Notes[SampleNotes.Shopping];
+
+        // ThixNote.exe <note> (a double click, "Öffnen mit"): the setup arguments and what is no file are left out.
+        Assert.Equal([plan], App.NoteFilesIn([plan, "--restart", Path.Combine(data.Folder, "fehlt.md")]));
+        var window = Open(data);
+        var notes = window.Notes.ViewModel;
+        notes.OpenFiles(App.NoteFilesIn([plan]));
+        Settle(window);
+        Assert.Equal(plan, notes.ActiveDocument?.FilePath);
+
+        // A second start with a note hands it to the running ThixNote (MatSingleInstance), which opens it as a tab.
+        var handedOver = new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var first = App.CreateSingleInstance(files => handedOver.TrySetResult(files));
+        Assert.True(first.TryClaim([]));
+        using var second = App.CreateSingleInstance(_ => { });
+        Assert.False(second.TryClaim([shopping]), "the second start must not run on its own");
+        Assert.True(handedOver.Task.Wait(TimeSpan.FromSeconds(10)), "the running ThixNote got nothing");
+        Assert.Equal([shopping], handedOver.Task.Result);
+
+        notes.OpenFiles(handedOver.Task.Result);
+        Settle(window);
+        Assert.Equal(shopping, notes.ActiveDocument?.FilePath);
+        Assert.Equal(2, notes.Documents.Count);
+        window.IsExiting = true;
+        window.Close();
+    }
+
+    [Fact]
+    public void The_setup_asks_what_installer_json_offers()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // the setup assistant exists on Windows only
+        }
+
+        var options = Setup.ThixNoteSetup.Options().ToList();
+        Assert.Equal(["type:.md", "type:.txt", "type:.txts", "shortcut", "updates"], options.Select(option => option.Key));
+        Assert.Equal([true, false, true, false, true], options.Select(option => option.IsOn));
+        var choices = Setup.ThixNoteSetup.Choices(options.ToDictionary(option => option.Key, option => option.IsOn));
+        Assert.Equal([".md", ".txts"], choices.FileTypes);
+        Assert.Equal((false, true), (choices.DesktopShortcut, choices.AutomaticUpdates));
+    }
+
     [Fact]
     public void No_window_writes_a_colour_of_its_own()
     {

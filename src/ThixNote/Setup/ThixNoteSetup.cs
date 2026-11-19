@@ -3,6 +3,7 @@ using MatDesktop;
 using ThixNote.Controls;
 using ThixNote.Core.Business;
 using ThixNote.Core.Infrastructure;
+using ThixNote.Core.Models;
 
 namespace ThixNote.Setup;
 
@@ -16,8 +17,6 @@ namespace ThixNote.Setup;
 [SupportedOSPlatform("windows")]
 internal static class ThixNoteSetup
 {
-    public const string SecureNotesOption = "txts";
-
     /// <summary>Shows the assistant; <paramref name="finished"/> gets true when the program folder has to be removed after this process ended.</summary>
     public static void Run(bool isUninstall, Action<bool> finished)
     {
@@ -37,10 +36,8 @@ internal static class ThixNoteSetup
                 }
                 else
                 {
-                    var options = isUpdate
-                        ? null
-                        : new InstallOptions(run.Options.GetValueOrDefault("shortcut"), run.Options.GetValueOrDefault(SecureNotesOption, true), run.Options.GetValueOrDefault("updates", true));
-                    await Task.Run(() => InstallService.Install(source, options, Report));
+                    var choices = isUpdate ? null : Choices(run.Options);
+                    await Task.Run(() => InstallService.Install(source, choices, Report));
                 }
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException
@@ -89,10 +86,7 @@ internal static class ThixNoteSetup
                 MatSetupStep.Welcome(
                     "ThixNote ist eine einfache Notiz-App: Jede Notiz ist eine normale Datei – Markdown, Text oder mit Kennwort verschlüsselt – mit Tabs wie in einem Editor.",
                     Note($"Wird für dein Benutzerkonto installiert – ohne Administratorrechte – nach\n{programFolder}")),
-                MatSetupStep.WithOptions(null,
-                    new MatSetupOption(SecureNotesOption, "Verschlüsselte Notizen (.txts) mit ThixNote öffnen", "Für .md und .txt erscheint ThixNote unter „Öffnen mit“", true),
-                    MatSetupOption.DesktopShortcut("Ein Startmenü-Eintrag wird immer angelegt"),
-                    MatSetupOption.AutomaticUpdates("Neue Versionen werden installiert, wenn du ThixNote schließt")),
+                MatSetupStep.WithOptions(null, [.. Options()]),
             ],
         };
 
@@ -110,6 +104,41 @@ internal static class ThixNoteSetup
             DeleteDataDescription = "Einstellungen und Protokolle auf diesem Computer. Deine Notizen bleiben in jedem Fall erhalten.",
         });
     }
+
+    /// <summary>
+    /// The switches of the Options step from the install options (installer.json, SETUP-08), each on as its default: the same
+    /// questions ThixLauncher asks before it installs quietly. File types: key "type:.md".
+    /// </summary>
+    internal static IEnumerable<MatSetupOption> Options()
+    {
+        var config = InstallerOptions.Config;
+        var first = true;
+        foreach (var type in config.FileTypes)
+        {
+            var description = first ? "Sonst steht ThixNote für diese Dateien unter „Öffnen mit“" : null;
+            yield return new MatSetupOption(FileTypeKey + type.Extension, $"{type.Name} ({type.Extension}) mit ThixNote öffnen", description, type.Default);
+            first = false;
+        }
+
+        if (config.DesktopShortcut is { } shortcut)
+        {
+            yield return MatSetupOption.DesktopShortcut("Ein Startmenü-Eintrag wird immer angelegt") with { IsOn = shortcut.Default };
+        }
+
+        if (config.AutomaticUpdates is { } updates)
+        {
+            yield return MatSetupOption.AutomaticUpdates("Neue Versionen werden installiert, wenn du ThixNote schließt") with { IsOn = updates.Default };
+        }
+    }
+
+    /// <summary>The answers of the Options step as install choices.</summary>
+    internal static InstallChoices Choices(IReadOnlyDictionary<string, bool> options) => new(
+        options.TryGetValue("shortcut", out var shortcut) ? shortcut : null,
+        null,
+        options.TryGetValue("updates", out var updates) ? updates : null,
+        InstallerOptions.Config.FileTypes.Where(type => options.GetValueOrDefault(FileTypeKey + type.Extension)).Select(type => type.Extension).ToList());
+
+    private const string FileTypeKey = "type:";
 
     /// <summary>A note under the text of a step, in the tint of information.</summary>
     private static InfoBar Note(string text)

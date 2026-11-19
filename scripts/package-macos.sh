@@ -4,8 +4,11 @@
 #
 #   scripts/package-macos.sh <publish folder> <rid: osx-arm64|osx-x64> <version> <build number> <output folder>
 #
-# Runs on macOS (codesign, ditto, hdiutil). .txts opens with ThixNote (own document icon); .md and .txt offer it under
-# "Öffnen mit". Without an Apple Developer ID the app is signed ad hoc (needed on Apple Silicon); Gatekeeper then asks once
+# Runs on macOS (codesign, ditto, hdiutil). The document types are the file types of src/ThixNote.Core/installer.json
+# (SETUP-08; a test holds them together): ThixNote owns .txts (own document icon) and is offered for .md and .txt under
+# "Öffnen mit". Which of them open with ThixNote on a double click, "ThixNote --configure --file-types=…" decides
+# (ThixLauncher calls it after copying the bundle; Launch Services, per user).
+# Without an Apple Developer ID the app is signed ad hoc (needed on Apple Silicon); Gatekeeper then asks once
 # (right click > Öffnen, or System Settings > Privacy & Security).
 set -eu
 
@@ -67,7 +70,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <array>
     <dict>
       <key>CFBundleTypeName</key>
-      <string>ThixNote verschlüsselte Notiz</string>
+      <string>Verschlüsselte Notiz</string>
       <key>CFBundleTypeExtensions</key>
       <array><string>txts</string></array>
       <key>CFBundleTypeIconFile</key>
@@ -79,9 +82,19 @@ cat > "$app/Contents/Info.plist" <<PLIST
     </dict>
     <dict>
       <key>CFBundleTypeName</key>
-      <string>Notiz</string>
+      <string>Markdown-Notiz</string>
       <key>CFBundleTypeExtensions</key>
-      <array><string>md</string><string>txt</string></array>
+      <array><string>md</string></array>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Textnotiz</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>txt</string></array>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
       <key>LSHandlerRank</key>

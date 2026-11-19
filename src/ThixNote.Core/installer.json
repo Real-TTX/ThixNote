@@ -1,0 +1,9 @@
+{
+  "desktopShortcut": { "default": false },
+  "automaticUpdates": { "default": true },
+  "fileTypes": [
+    { "extension": ".md", "name": "Markdown-Notiz", "default": true },
+    { "extension": ".txt", "name": "Textnotiz", "default": false },
+    { "extension": ".txts", "name": "Verschlüsselte Notiz", "default": true }
+  ]
+}

@@ -13,6 +13,9 @@ namespace ThixNote.Core.Business;
 /// </summary>
 public static class MacAppBundle
 {
+    /// <summary>CFBundleIdentifier of ThixNote.app (scripts/package-macos.sh).</summary>
+    public const string BundleId = "info.schmoldt.thixnote";
+
     /// <summary>The bundle this process runs from (…/ThixNote.app/Contents/MacOS/ThixNote), or null.</summary>
     public static string? Current => BundleOf(Environment.ProcessPath);
 

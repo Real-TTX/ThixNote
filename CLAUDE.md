@@ -39,7 +39,7 @@ setup, update and tests; MatDesign (`../MatDesign`, docs/DESKTOP.md) holds the r
   `toast`. The README uses them; a new window or page goes into `Snapshot.cs`. No real path or note may show in a picture.
 - The Windows publish (win-x64) is a **trimmed** single file (`TrimMode=partial`, about 35 MB). `ThixNote.exe --self-test
   <report>` checks the published program (JSON, encryption, export, the cloud contract, sync index and
-  token protection, the embedded document icon, COM, every window); CI runs it.
+  token protection, the embedded document icon, the install options, COM, every window); CI runs it.
 - `scripts/package-macos.sh` builds `ThixNote.app` (Info.plist with the document types, icns, ad-hoc signature), the update
   zip and the dmg. `scripts/Capture-Window.ps1` takes a picture of a real window (needs a screen).
 - Icons: `dotnet run --project tools/IconGen -- .` renders `assets/logo/*.svg` into `assets/icons` (PNG, ICO, ICNS); copy the
@@ -70,17 +70,28 @@ src/ThixNote.Core       (no UI) models, business layer (static classes), infrast
                         NoteSync (notes folder <-> general sync: collection "notes" key = GUID, data {path, content} or
                         {path, bytes = the encrypted .txts}; "folders"; moves keep the key; conflict copy "Titel (Konflikt
                         Gerät).md"; tombstone -> trash; never touches a note with unsaved changes – it waits in the index),
-                        InstallService (Windows self-installing exe, file types, QuickNote removal), UpdateService +
-                        MacAppBundle (OTA from the rolling releases; install on exit or "now")
+                        InstallService (Windows self-installing exe, QuickNote removal, replaces the file types of 1.1:
+                        ThixNote.SecureNote / ThixNote.Note – an update keeps .txts with ThixNote),
+                        InstallerOptions (SETUP-08 of MatDesign: installer.json – embedded, and as "installer" in the update
+                        manifest – says what the setup offers: desktop shortcut, automatic updates, the file types .md (on),
+                        .txt (off), .txts (on); no autostart (no tray); the command line --quiet / --update / --configure
+                        [--desktop-shortcut=yes|no --automatic-updates=yes|no --file-types=.a,.b|none|default] [--start],
+                        a wrong value or an option not offered = exit code 2, nothing installed; Current/Apply), UpdateService +
+                        MacAppBundle (OTA from the rolling releases; install on exit or "now"; BundleId)
   Infrastructure/       AppPaths (data folder, THIXNOTE_DATA_DIR), AppInfo (version, channel, build; Pin for snapshots), AppClock,
                         SettingsStore (settings.json), SyncIndex (sync-index.json: key <-> path, hash, UpdatedAt, last revision,
                         deferred changes; per account and notes folder), TokenStore (device token: DPAPI / Keychain), Log,
                         ProblemReports (crash / hang reports, shown at the next start)
   MatCloud/             COPY of MatCloud's contract (never edited here, see Build / run / test)
-  Platform/Windows/     ShellLink (.lnk through generated COM)
+  Platform/Windows/     ShellLink (.lnk through generated COM), FileAssociations (HKCU\Software\Classes, per user: ProgID
+                        ThixNote.<ext> and "Öffnen mit" for EVERY type of installer.json, the handler only for the chosen ones)
+  Platform/Mac/         MacFileAssociations (Launch Services default handler; the bundle declares the types in Info.plist,
+                        scripts/package-macos.sh – ServiceTests hold them to installer.json)
 src/ThixNote            (Avalonia app)
-  Program / App         start-up: ProblemReports, self test, snapshot, Windows setup mode (--update [--restart], --quiet,
-                        --uninstall), single instance (MatSingleInstance hands files to the running one), UpdateCoordinator;
+  Program / App         start-up: ProblemReports, self test, snapshot, setup mode (InstallerOptions.Parse: --configure on both
+                        systems; Windows --update [--restart], --quiet [--start], --uninstall), the notes named on the command
+                        line (NoteFilesIn) open as tabs, single instance (CreateSingleInstance: a second start hands its notes
+                        to the running one – UiTests hold it), UpdateCoordinator;
                         ExitApplication saves and starts a downloaded update; InstallUpdateNowAsync
   MainWindow            MatWindow: MatTitleBar (logo + word mark, the TABS of NotesPage), MatNav (Alle Notizen,
                         Favoriten, the folders, Settings; foot: new folder, notes folder, the cloud state -> Einstellungen › Cloud;
@@ -96,7 +107,8 @@ src/ThixNote            (Avalonia app)
                         (one tab: autosave, title from the first line, caret for the status bar, lock/unlock; tells SyncService
                         when it has unsaved changes), LibraryItemViewModel
   Dialogs/              ConfirmDialog, TextInputDialog (rename, new folder), PasswordDialog, ProblemReportDialog
-  Setup/                ThixNoteSetup: MatSetupWindow for install (Welcome → Options → Progress → Finish), update and uninstall
+  Setup/                ThixNoteSetup: MatSetupWindow for install (Welcome → Options → Progress → Finish), update and uninstall;
+                        the switches of Options come from installer.json (file types: key "type:.ext")
   Controls/             IconLabel, ActionBar, InfoBar, FormErrors (from ThixClip)
   Themes/               ThixNoteControls.axaml: tabs, the frameless editor, the bars – every value a MatDesktop resource
 tests/ThixNote.Tests    see above (FakeCloud = MatCloud in memory, SyncTests)

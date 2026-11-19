@@ -174,7 +174,7 @@ internal static class Snapshot
             run.Progress.Report(new MatSetupReport($"Installiere ThixNote nach {ProgramFolder}", MatSetupStepState.Done));
             run.Progress.Report(new MatSetupReport("Programmdatei kopiert", MatSetupStepState.Done));
             run.Progress.Report(new MatSetupReport("Startmenü-Eintrag angelegt", MatSetupStepState.Done));
-            run.Progress.Report(new MatSetupReport("Verschlüsselte Notizen (.txts) öffnen mit ThixNote", MatSetupStepState.Running, 65));
+            run.Progress.Report(new MatSetupReport("Öffnen mit ThixNote: .md, .txts", MatSetupStepState.Running, 65));
             await hold.Task;
         });
         window.Show();

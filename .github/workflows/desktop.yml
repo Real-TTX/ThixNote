@@ -180,6 +180,13 @@ jobs:
     needs: [version, windows, macos]
     runs-on: ubuntu-latest
     steps:
+      # installer.json: the install options (SETUP-08) go into the manifest as "installer" (ThixLauncher, ThixInstall)
+      - uses: actions/checkout@v4
+        with:
+          path: source
+          sparse-checkout: src/ThixNote.Core/installer.json
+          sparse-checkout-cone-mode: false
+
       - uses: actions/download-artifact@v4
         with:
           name: windows
@@ -191,7 +198,7 @@ jobs:
           path: artifacts
 
       # The manifest the installed application reads for its update check (UpdateService): "setup"/"sha256" for
-      # Windows, "packages" for each platform.
+      # Windows, "packages" for each platform, "installer" = what the setup offers (installer.json, SETUP-08).
       - name: Write update manifest
         shell: bash
         run: |
@@ -206,6 +213,7 @@ jobs:
             "setup": "ThixNoteSetup.exe",
             "sha256": "$(sha ThixNoteSetup.exe)",
             "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "installer": $(cat ../source/src/ThixNote.Core/installer.json),
             "packages": {
               "win-x64": { "file": "ThixNoteSetup.exe", "sha256": "$(sha ThixNoteSetup.exe)" },
               "osx-arm64": { "file": "ThixNote-macOS-arm64.zip", "sha256": "$(sha ThixNote-macOS-arm64.zip)" },

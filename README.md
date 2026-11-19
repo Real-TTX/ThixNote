@@ -34,13 +34,27 @@ Fertige Builds liegen unter [Releases](https://github.com/Real-TTX/ThixNote/rele
 - **macOS:** `ThixNote-macOS-arm64.dmg` (Apple Silicon) oder `ThixNote-macOS-x64.dmg` (Intel) öffnen und ThixNote in „Programme“ ziehen.
 - Oder über **ThixLauncher**, der die Thix-Apps installiert und aktuell hält.
 
-Ohne Fenster (für Skripte, Intune und Ähnliches):
+**Ohne Fenster** (ThixLauncher, ThixInstall, Skripte, Intune) – die Optionen des Setups als Argumente (MatDesign SETUP-05/08;
+was angeboten wird, steht in `src/ThixNote.Core/installer.json` und im Update-Manifest unter `installer`):
 
 | Befehl | Wirkung |
 |---|---|
-| `ThixNoteSetup.exe --quiet` | installiert mit den Standardoptionen |
-| `ThixNoteSetup.exe --update` | installiert oder aktualisiert still, mit `--restart` startet ThixNote danach |
-| `ThixNote.exe --uninstall [--quiet]` | deinstalliert; die Notizen bleiben immer erhalten |
+| `ThixNoteSetup.exe --quiet [Optionen] [--start]` | installiert ohne Fenster; `--start` startet ThixNote danach |
+| `ThixNoteSetup.exe --update [Optionen] [--restart]` | installiert oder aktualisiert still, mit `--restart` (oder `--start`) startet ThixNote danach |
+| `ThixNote --configure [Optionen]` | wendet nur die Optionen auf das installierte ThixNote an (Windows und macOS, dort nach dem Kopieren der App) |
+| `ThixNote.exe --uninstall [--quiet]` | deinstalliert, auch die Dateitypen; die Notizen bleiben immer erhalten |
+
+| Option | Standard |
+|---|---|
+| `--desktop-shortcut=yes\|no` | `no` (ein Startmenü-Eintrag entsteht immer; nur Windows) |
+| `--automatic-updates=yes\|no` | `yes` (installiert wird beim Schließen von ThixNote) |
+| `--file-types=.md,.txt,.txts\|none\|default` | `.md` und `.txts` öffnen mit ThixNote, `.txt` nicht |
+
+Für alle drei Dateitypen steht ThixNote unter „Öffnen mit“; die gewählten öffnet ein Doppelklick in ThixNote (Windows pro
+Benutzer ohne Administratorrechte, macOS über Launch Services). Eine Wahl, die du selbst unter „Öffnen mit › Immer“ getroffen
+hast, lässt Windows bestehen. Nicht angegebene Optionen: bei der Erstinstallation der Standard, bei einem Update bleibt es, wie
+es ist. Eine unbekannte Option, ein falscher Wert oder ein Dateityp, den ThixNote nicht öffnet, bricht mit Exit-Code 2 ab, ohne
+etwas zu installieren. Eine Datei als Argument (`ThixNote.exe Notiz.md`) öffnet sie als Tab, auch im schon laufenden ThixNote.
 
 ### Updates
 

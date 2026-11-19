@@ -69,6 +69,15 @@ internal static class SelfTest
             return Task.FromResult($"{samples.Count} notes");
         });
 
+        await Check("install options (installer.json, arguments)", () =>
+        {
+            var config = InstallerOptions.Config;
+            Ensure(config is { DesktopShortcut: not null, AutomaticUpdates: not null, Autostart: null } && config.FileTypes.Count == 3, "installer.json not read");
+            var request = InstallerOptions.Parse([InstallerOptions.QuietArgument, "--desktop-shortcut=yes", "--file-types=md,txts"]);
+            Ensure(request is { Action: SetupAction.Install, Choices.DesktopShortcut: true } && request.Choices.FileTypes is [".md", ".txts"], "arguments not read");
+            return Task.FromResult(string.Join(", ", config.FileTypes.Select(type => type.Extension)));
+        });
+
         await Check("cloud (contract JSON, sync index, token)", () =>
         {
             var item = new MatCloud.Contract.SyncItemDto { Collection = "notes", Key = "k1", Data = """{"path":"a.md","content":"x"}""", UpdatedAt = DateTimeOffset.UtcNow };

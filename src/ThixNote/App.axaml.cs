@@ -69,7 +69,7 @@ public partial class App : Application
             return;
         }
 
-        if (OperatingSystem.IsWindows() && RunSetupIfRequested(args))
+        if (RunSetupIfRequested(args))
         {
             return;
         }
@@ -226,19 +226,48 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Windows: the published ThixNote.exe is its own setup (InstallService):
+    /// The command line of SETUP-05 with the install options of SETUP-08 (InstallerOptions; a wrong value: exit code 2, nothing
+    /// is installed). Windows: the published ThixNote.exe is its own setup (InstallService):
     ///  - "--uninstall" (from "Installierte Apps"): the uninstall assistant, or silently with "--quiet".
-    ///  - "--update" (the update, ThixLauncher): installs itself silently; with "--restart" it starts ThixNote again.
-    ///  - "--quiet": installs itself silently with the default choices.
+    ///  - "--quiet [options]" (ThixLauncher, ThixInstall, an administrator): installs without a window; "--start" starts it.
+    ///  - "--update [options]" (the update, ThixLauncher): installs itself silently, keeping what is not given; with "--restart"
+    ///    (or "--start") it starts ThixNote again.
     ///  - started anywhere else than the program folder (e.g. from Downloads): the setup assistant.
-    /// A development build (not single-file) always runs as the application.
+    /// Both systems: "--configure [options]" applies the options to the installed ThixNote and ends (macOS: ThixLauncher calls
+    /// it after it copied the bundle). A development build (not single-file) runs as the application otherwise.
     /// </summary>
-    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private bool RunSetupIfRequested(string[] args)
     {
-        if (args.Contains(InstallService.UninstallArgument))
+        SetupRequest request;
+        try
         {
-            if (args.Contains(InstallService.QuietArgument))
+            request = InstallerOptions.Parse(args);
+        }
+        catch (BusinessException exception)
+        {
+            Log.Warning($"Setup arguments refused: {exception.Message}");
+            Console.Error.WriteLine(exception.Message);
+            EndProcess(2);
+            return true;
+        }
+
+        if (request.Action == SetupAction.Configure)
+        {
+            var installed = OperatingSystem.IsWindows() && File.Exists(InstallService.InstalledExecutable) ? InstallService.InstalledExecutable : ExecutablePath;
+            InstallerOptions.Apply(request.Choices, installed, Log.Info);
+            EndProcess(0);
+            return true;
+        }
+
+        return OperatingSystem.IsWindows() && RunWindowsSetup(request, args);
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private bool RunWindowsSetup(SetupRequest request, string[] args)
+    {
+        if (request.Action == SetupAction.Uninstall)
+        {
+            if (request.Quiet)
             {
                 if (InstallService.Uninstall(deleteUserData: false, Log.Info))
                 {
@@ -261,23 +290,22 @@ public partial class App : Application
             return true;
         }
 
-        var isUpdate = args.Contains(InstallService.UpdateArgument);
-        if (isUpdate || (args.Contains(InstallService.QuietArgument) && !InstallService.IsInstalledExecutable(ExecutablePath)))
+        if (request.Action is SetupAction.Install or SetupAction.Update)
         {
             var exitCode = 0;
             try
             {
-                InstallService.Install(ExecutablePath, isUpdate && InstallService.IsInstalled ? null : new InstallOptions(DesktopShortcut: false), Log.Info);
+                InstallService.Install(ExecutablePath, request.Choices, Log.Info);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException
                                                   or System.Runtime.InteropServices.COMException or System.Security.SecurityException)
             {
-                Log.Error("Silent installation failed", exception);
+                Log.Error(request.Action == SetupAction.Update ? "Update failed" : "Quiet install failed", exception);
                 Console.Error.WriteLine(exception.Message);
                 exitCode = 1;
             }
 
-            if (args.Contains(InstallService.RestartArgument) && File.Exists(InstallService.InstalledExecutable))
+            if ((request.Start || args.Contains(InstallService.RestartArgument)) && File.Exists(InstallService.InstalledExecutable))
             {
                 InstallService.StartInstalled();
             }
@@ -300,8 +328,11 @@ public partial class App : Application
         return false;
     }
 
-    /// <summary>The notes named on the command line (a double click on a .txts file, "Öffnen mit"), as full paths.</summary>
-    private static IReadOnlyList<string> NoteFilesIn(string[] args) =>
+    /// <summary>
+    /// The notes named on the command line (a double click on a note, "Öffnen mit", ThixNote.exe &lt;file&gt;), as full paths;
+    /// what is no existing file (the setup arguments) is left out.
+    /// </summary>
+    internal static IReadOnlyList<string> NoteFilesIn(string[] args) =>
         args.Where(argument => !argument.StartsWith("--", StringComparison.Ordinal))
             .Select(argument =>
             {
@@ -326,8 +357,7 @@ public partial class App : Application
     /// </summary>
     private bool TakeSingleInstance(IReadOnlyList<string> files)
     {
-        _instance = new MatSingleInstance(AppInfo.ProductName, AppPaths.HasOverride ? AppPaths.DataDirectory : null);
-        _instance.SecondStart += (_, args) => Ui.Post(() => ShowMainWindow(NoteFilesIn(args)));
+        _instance = CreateSingleInstance(paths => Ui.Post(() => ShowMainWindow(paths)));
         if (!_instance.TryClaim([.. files]))
         {
             Log.Info("ThixNote runs already: the files were handed to it");
@@ -340,6 +370,17 @@ public partial class App : Application
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// The single instance of this user and data folder; <paramref name="secondStart"/> gets the notes a second start names
+    /// (on a thread of the listener).
+    /// </summary>
+    internal static MatSingleInstance CreateSingleInstance(Action<IReadOnlyList<string>> secondStart)
+    {
+        var instance = new MatSingleInstance(AppInfo.ProductName, AppPaths.HasOverride ? AppPaths.DataDirectory : null);
+        instance.SecondStart += (_, args) => secondStart(NoteFilesIn(args));
+        return instance;
     }
 
     /// <summary>The setup asks a running ThixNote to end (update, uninstall): it saves its notes and ends.</summary>

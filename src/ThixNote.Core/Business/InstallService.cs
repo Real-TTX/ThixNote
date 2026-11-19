@@ -1,39 +1,39 @@
 using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 using ThixNote.Core.Infrastructure;
+using ThixNote.Core.Models;
+using ThixNote.Core.Platform.Windows;
 
 namespace ThixNote.Core.Business;
-
-/// <summary>The choices of the setup assistant; an update (null) keeps what the user has.</summary>
-public sealed record InstallOptions(bool DesktopShortcut, bool AssociateSecureNotes = true, bool InstallUpdatesAutomatically = true);
 
 /// <summary>
 /// Windows only (macOS: the app bundle, <see cref="MacAppBundle"/>). ThixNote installs itself – like ThixClip – without a
 /// separate installer tool. The published ThixNote.exe is the setup: started from anywhere else it copies itself to
 /// %LocalAppData%\Programs\ThixNote (per user, no administrator rights), creates the Start menu entry, the entry in
-/// "Installierte Apps", the file types (.txts opens with ThixNote, .md and .txt offer it under "Öffnen mit") and optionally a
-/// desktop shortcut. "--uninstall" removes every one of them. The notes are never touched; the data folder
+/// "Installierte Apps" and – as the install options say (InstallerOptions, SETUP-08) – a desktop shortcut, automatic updates
+/// and the file types (ThixNote is under "Öffnen mit" for .md, .txt and .txts; the chosen ones open with it on a double
+/// click). "--uninstall" removes every one of them. The notes are never touched; the data folder
 /// (%LocalAppData%\ThixNote: settings, logs) only when the user asks for it while uninstalling.
 /// A former QuickNote installation (the old name of ThixNote) is removed on the way; its notes stay.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class InstallService
 {
-    public const string UpdateArgument = UpdateService.WindowsUpdateArgument;
+    public const string UpdateArgument = InstallerOptions.UpdateArgument;
     public const string RestartArgument = UpdateService.RestartArgument;
-    public const string UninstallArgument = "--uninstall";
-    public const string QuietArgument = "--quiet";
+    public const string UninstallArgument = InstallerOptions.UninstallArgument;
+    public const string QuietArgument = InstallerOptions.QuietArgument;
     public const string ExecutableName = "ThixNote.exe";
     public const string DocumentIconName = "ThixNote-Document.ico";
 
     /// <summary>A running ThixNote listens for this signal, saves its notes and ends itself.</summary>
     public const string ExitSignalName = "ThixNote.Exit";
 
-    public const string SecureNoteProgId = "ThixNote.SecureNote";
-    public const string NoteProgId = "ThixNote.Note";
+    /// <summary>The ProgIDs of ThixNote 1.1 and older (one for .txts, one for .md and .txt); an update replaces them.</summary>
+    internal const string FormerSecureNoteProgId = "ThixNote.SecureNote";
+    internal const string FormerNoteProgId = "ThixNote.Note";
 
     private const string DefaultUninstallKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\ThixNote";
     private const string DefaultClassesPath = @"Software\Classes";
@@ -75,23 +75,32 @@ public static class InstallService
 
     public static bool HasDesktopShortcut => File.Exists(DesktopShortcut);
 
-    /// <summary>.txts opens with ThixNote (chosen in the setup).</summary>
-    public static bool OpensSecureNotes
+    /// <summary>
+    /// The file types that open with ThixNote now (install options): its own ProgIDs, and .txts when an older ThixNote made
+    /// it open with its former ProgID – an update keeps that.
+    /// </summary>
+    public static IReadOnlyList<string> AssociatedFileTypes()
     {
-        get
+        var types = FileAssociations.Registered(AppInfo.ProductName, InstallerOptions.Config.FileTypes.Select(type => type.Extension)).ToList();
+        if (FileAssociations.HandlerOf(NoteLibrary.EncryptedExtension) == FormerSecureNoteProgId && !types.Contains(NoteLibrary.EncryptedExtension))
         {
-            using var key = Registry.CurrentUser.OpenSubKey($@"{ClassesPath}\.txts");
-            return key?.GetValue(string.Empty) as string == SecureNoteProgId;
+            types.Add(NoteLibrary.EncryptedExtension);
         }
+
+        return types;
     }
 
     public static bool IsInstalledExecutable(string path) =>
         string.Equals(Path.GetFullPath(path), Path.GetFullPath(InstalledExecutable), StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Installs or updates. <paramref name="options"/> null = update: shortcuts and file types stay as they are.</summary>
-    public static void Install(string sourceExecutable, InstallOptions? options, Action<string> log)
+    /// <summary>
+    /// Installs or updates with the install options (SETUP-08): what <paramref name="choices"/> leaves open (null, or a value of
+    /// null) an installed ThixNote keeps as it is and a first install takes from installer.json.
+    /// </summary>
+    public static void Install(string sourceExecutable, InstallChoices? choices, Action<string> log)
     {
-        var isUpdate = options is null;
+        var isUpdate = IsInstalled;
+        var wanted = (choices ?? new InstallChoices()).Over(isUpdate ? InstallerOptions.Current() : InstallerOptions.Defaults);
         log(isUpdate ? $"Aktualisiere ThixNote in {ProgramFolder}" : $"Installiere ThixNote nach {ProgramFolder}");
         StopRunningInstances(log);
         if (_testLocations is null)
@@ -112,20 +121,9 @@ public static class InstallService
         CreateShortcut(StartMenuShortcut);
         log("Startmenü-Eintrag angelegt");
 
-        if (options?.DesktopShortcut ?? HasDesktopShortcut)
-        {
-            CreateShortcut(DesktopShortcut);
-            log("Desktop-Verknüpfung angelegt");
-        }
-
-        var associateSecureNotes = options?.AssociateSecureNotes ?? OpensSecureNotes;
-        RegisterFileTypes(associateSecureNotes);
-        log(associateSecureNotes ? "Verschlüsselte Notizen (.txts) öffnen mit ThixNote" : "ThixNote unter „Öffnen mit“ eingetragen");
-
-        if (options is not null)
-        {
-            ApplyUpdateChoice(options.InstallUpdatesAutomatically, log);
-        }
+        // The file types of ThixNote 1.1 go; also an update writes them again: they point at the installed file.
+        UnregisterFileTypes(FormerSecureNoteProgId, FormerNoteProgId, executableName: null);
+        InstallerOptions.Apply(wanted, InstalledExecutable, log);
 
         WriteUninstallEntry();
         log("Eintrag unter „Installierte Apps“ geschrieben");
@@ -145,7 +143,8 @@ public static class InstallService
         DeleteFile(StartMenuShortcut);
         DeleteFile(DesktopShortcut);
         log("Verknüpfungen entfernt");
-        UnregisterFileTypes(SecureNoteProgId, NoteProgId, ExecutableName);
+        InstallerOptions.RemoveFileTypes();
+        UnregisterFileTypes(FormerSecureNoteProgId, FormerNoteProgId, ExecutableName);
         log("Dateitypen abgemeldet");
         Registry.CurrentUser.DeleteSubKeyTree(UninstallKeyPath, throwOnMissingSubKey: false);
         log("Eintrag unter „Installierte Apps“ entfernt");
@@ -198,12 +197,14 @@ public static class InstallService
         if (programFolder is null)
         {
             _testLocations = null;
+            FileAssociations.UseClassesRootForTests(null);
             return;
         }
 
         var root = @"Software\ThixNoteTests\" + Path.GetFileName(programFolder);
         _testLocations = new TestLocations(programFolder, Path.Combine(programFolder, "StartMenu"), Path.Combine(programFolder, "Desktop"),
             root + @"\Uninstall", root + @"\Classes");
+        FileAssociations.UseClassesRootForTests(_testLocations.ClassesPath);
     }
 
     /// <summary>Removes what the tests wrote into the registry.</summary>
@@ -256,50 +257,8 @@ public static class InstallService
         icon.CopyTo(file);
     }
 
-    /// <summary>.txts opens with ThixNote (own document icon) if chosen; .md and .txt get ThixNote in "Öffnen mit" without taking them over.</summary>
-    private static void RegisterFileTypes(bool associateSecureNotes)
-    {
-        var openCommand = $"\"{InstalledExecutable}\" \"%1\"";
-        var documentIcon = Path.Combine(ProgramFolder, DocumentIconName);
-        RegisterProgId(SecureNoteProgId, "ThixNote verschlüsselte Notiz", File.Exists(documentIcon) ? $"\"{documentIcon}\"" : $"\"{InstalledExecutable}\",0", openCommand);
-        RegisterProgId(NoteProgId, "ThixNote Notiz", $"\"{InstalledExecutable}\",0", openCommand);
-
-        using (var extensionKey = Registry.CurrentUser.CreateSubKey($@"{ClassesPath}\.txts"))
-        {
-            if (associateSecureNotes)
-            {
-                extensionKey.SetValue(string.Empty, SecureNoteProgId);
-                extensionKey.SetValue("Content Type", "application/x-thixnote-secure");
-            }
-            else if (extensionKey.GetValue(string.Empty) as string == SecureNoteProgId)
-            {
-                extensionKey.DeleteValue(string.Empty, throwOnMissingValue: false);
-            }
-        }
-
-        AddOpenWithProgId(".txts", SecureNoteProgId);
-        AddOpenWithProgId(".md", NoteProgId);
-        AddOpenWithProgId(".txt", NoteProgId);
-
-        using (var applicationKey = Registry.CurrentUser.CreateSubKey($@"{ClassesPath}\Applications\{ExecutableName}"))
-        {
-            applicationKey.SetValue("FriendlyAppName", AppInfo.ProductName);
-            using (var supportedTypes = applicationKey.CreateSubKey("SupportedTypes"))
-            {
-                foreach (var extension in new[] { ".md", ".txt", ".txts" })
-                {
-                    supportedTypes.SetValue(extension, string.Empty);
-                }
-            }
-
-            using var commandKey = applicationKey.CreateSubKey(@"shell\open\command");
-            commandKey.SetValue(string.Empty, openCommand);
-        }
-
-        NotifyShellAboutAssociations();
-    }
-
-    private static void UnregisterFileTypes(string secureNoteProgId, string noteProgId, string executableName)
+    /// <summary>The file types of ThixNote 1.1 and older (and of QuickNote); <paramref name="executableName"/> null keeps the "Öffnen mit" entry of the program.</summary>
+    internal static void UnregisterFileTypes(string secureNoteProgId, string noteProgId, string? executableName)
     {
         using (var extensionKey = Registry.CurrentUser.OpenSubKey($@"{ClassesPath}\.txts", writable: true))
         {
@@ -314,27 +273,12 @@ public static class InstallService
         RemoveOpenWithProgId(".txt", noteProgId);
         Registry.CurrentUser.DeleteSubKeyTree($@"{ClassesPath}\{secureNoteProgId}", throwOnMissingSubKey: false);
         Registry.CurrentUser.DeleteSubKeyTree($@"{ClassesPath}\{noteProgId}", throwOnMissingSubKey: false);
-        Registry.CurrentUser.DeleteSubKeyTree($@"{ClassesPath}\Applications\{executableName}", throwOnMissingSubKey: false);
-        NotifyShellAboutAssociations();
-    }
-
-    private static void RegisterProgId(string progId, string description, string icon, string openCommand)
-    {
-        using var typeKey = Registry.CurrentUser.CreateSubKey($@"{ClassesPath}\{progId}");
-        typeKey.SetValue(string.Empty, description);
-        using (var iconKey = typeKey.CreateSubKey("DefaultIcon"))
+        if (executableName is not null)
         {
-            iconKey.SetValue(string.Empty, icon);
+            Registry.CurrentUser.DeleteSubKeyTree($@"{ClassesPath}\Applications\{executableName}", throwOnMissingSubKey: false);
         }
 
-        using var commandKey = typeKey.CreateSubKey(@"shell\open\command");
-        commandKey.SetValue(string.Empty, openCommand);
-    }
-
-    private static void AddOpenWithProgId(string extension, string progId)
-    {
-        using var key = Registry.CurrentUser.CreateSubKey($@"{ClassesPath}\{extension}\OpenWithProgids");
-        key.SetValue(progId, Array.Empty<byte>(), RegistryValueKind.None);
+        FileAssociations.NotifyShell();
     }
 
     private static void RemoveOpenWithProgId(string extension, string progId)
@@ -342,18 +286,6 @@ public static class InstallService
         using var key = Registry.CurrentUser.OpenSubKey($@"{ClassesPath}\{extension}\OpenWithProgids", writable: true);
         key?.DeleteValue(progId, throwOnMissingValue: false);
     }
-
-    /// <summary>Tells Explorer to reload file icons and associations at once (not for the test locations).</summary>
-    private static void NotifyShellAboutAssociations()
-    {
-        if (_testLocations is null)
-        {
-            SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
-        }
-    }
-
-    [DllImport("shell32.dll")]
-    private static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);
 
     /// <summary>Asks a running ThixNote from the program folder to end (it saves its notes), and ends it when it does not react in time.</summary>
     private static void StopRunningInstances(Action<string> log)
@@ -451,17 +383,16 @@ public static class InstallService
         }
     }
 
-    /// <summary>"Updates automatisch installieren" of the setup; a locked configuration (policy) keeps its value.</summary>
-    private static void ApplyUpdateChoice(bool installAutomatically, Action<string> log)
+    /// <summary>The desktop shortcut on or off (install options).</summary>
+    internal static void SetDesktopShortcut(bool wanted)
     {
-        try
+        if (wanted)
         {
-            SettingsService.Update(settings => settings with { InstallUpdatesAutomatically = installAutomatically });
-            log(installAutomatically ? "Updates werden automatisch installiert" : "Updates werden nur angeboten");
+            CreateShortcut(DesktopShortcut);
         }
-        catch (Models.BusinessException exception)
+        else
         {
-            log(exception.Message);
+            DeleteFile(DesktopShortcut);
         }
     }
 
