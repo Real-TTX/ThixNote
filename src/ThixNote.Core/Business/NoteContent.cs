@@ -79,7 +79,7 @@ public static class NoteContent
         File.WriteAllText(targetPath, content, Utf8WithoutBom);
         File.Delete(path);
         EncryptionSession.Forget(path);
-        SyncService.NoteMoved(path, targetPath);
+        SyncService.NoteMoved(path, targetPath, unprotected: true);
         return targetPath;
     }
 

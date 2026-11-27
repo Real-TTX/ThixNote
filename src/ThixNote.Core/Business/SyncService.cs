@@ -309,8 +309,11 @@ public static class SyncService
         }
     }
 
-    /// <summary>ThixNote moved a note (rename, protect, unprotect): it keeps its key in the cloud.</summary>
-    internal static void NoteMoved(string oldPath, string newPath)
+    /// <summary>
+    /// ThixNote moved a note (rename, protect, unprotect): it keeps its key in the cloud. <paramref name="unprotected"/>: the
+    /// person removed the protection – the next push of the note says so (MatCloud keeps a protected note protected otherwise).
+    /// </summary>
+    internal static void NoteMoved(string oldPath, string newPath, bool unprotected = false)
     {
         var cloud = SettingsService.Get().Cloud;
         if (!cloud.IsConnected)
@@ -320,7 +323,7 @@ public static class SyncService
 
         try
         {
-            NoteSync.Moved(AccountKey(cloud), oldPath, newPath);
+            NoteSync.Moved(AccountKey(cloud), oldPath, newPath, unprotected);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using MatCloud.Contract;
 
 namespace ThixNote.Tests;
@@ -7,7 +8,8 @@ namespace ThixNote.Tests;
 /// <summary>
 /// MatCloud in memory, after the rules of <see cref="CloudContract"/> and <see cref="SyncContract"/>: the sign-in with a
 /// password and in the browser (a code that a test approves or denies), the account, and the general sync of ThixNote – one
-/// revision counter, tombstones, the last writer wins by UpdatedAt (a delete too). Enough to test the desktop side.
+/// revision counter, tombstones, the last writer wins by UpdatedAt (a delete too), and the rule of MatCloud's Note module that
+/// a protected note turns plain only with <c>"unprotected":true</c> (<see cref="GuardsProtectedNotes"/>). Enough to test the desktop side.
 /// </summary>
 internal sealed class FakeCloud : HttpMessageHandler
 {
@@ -29,6 +31,18 @@ internal sealed class FakeCloud : HttpMessageHandler
 
     /// <summary>The administrator switched ThixNote off: every call of a device answers 403.</summary>
     public bool IsAppSwitchedOff { get; set; }
+
+    /// <summary>
+    /// A push that turns a protected note (bytes, a .txts) into a plain one without <c>"unprotected":true</c> is not applied: the
+    /// device gets the protected note as <see cref="SyncPushResult.Current"/>, as for a newer change. False = a cloud before that rule.
+    /// </summary>
+    public bool GuardsProtectedNotes { get; set; } = true;
+
+    /// <summary>A pull sees nothing above this revision (a change that reached the cloud between a device's pull and its push).</summary>
+    public long? HideChangesAbove { get; set; }
+
+    /// <summary>Every item that was pushed, in order (applied or not).</summary>
+    public List<SyncItemDto> Pushed { get; } = [];
 
     public long Revision => _revision;
 
@@ -67,6 +81,26 @@ internal sealed class FakeCloud : HttpMessageHandler
             var link = new Link("HAND-OVER", deviceName, Guid.NewGuid().ToString("D")) { State = DeviceLinkState.Approved };
             _links[link.PollToken] = link;
             return link.PollToken;
+        }
+    }
+
+    /// <summary>
+    /// The person saves a plain note on the pages of the cloud (MatCloud's Note module): its new data goes in like a change of a
+    /// device, without <c>"unprotected"</c> – the pages never remove a protection, they only edit a note that is plain already.
+    /// </summary>
+    public void SaveInBrowser(string key, string path, string content)
+    {
+        lock (_gate)
+        {
+            var current = Items[("notes", key)];
+            Items[("notes", key)] = current with
+            {
+                Data = JsonSerializer.Serialize(new { path, content }, CloudContract.Json),
+                ContentHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(content))),
+                UpdatedAt = current.UpdatedAt.AddSeconds(1),
+                Source = "Browser",
+                Revision = ++_revision,
+            };
         }
     }
 
@@ -183,7 +217,7 @@ internal sealed class FakeCloud : HttpMessageHandler
                 var limit = Math.Clamp(int.Parse(query["limit"] ?? "100", System.Globalization.CultureInfo.InvariantCulture), 1, SyncContract.MaxBatchSize);
                 lock (_gate)
                 {
-                    var newer = Items.Values.Where(item => item.Revision > since).OrderBy(item => item.Revision).ToList();
+                    var newer = Items.Values.Where(item => item.Revision > since && (HideChangesAbove is not { } hidden || item.Revision <= hidden)).OrderBy(item => item.Revision).ToList();
                     var items = newer.Take(limit).ToList();
                     return Json(HttpStatusCode.OK, new SyncChangeSet(items, items.Count > 0 ? items[^1].Revision : since, newer.Count > limit));
                 }
@@ -202,7 +236,9 @@ internal sealed class FakeCloud : HttpMessageHandler
                     var results = new List<SyncPushResult>();
                     foreach (var item in push.Items)
                     {
-                        if (Items.TryGetValue((item.Collection, item.Key), out var current) && current.UpdatedAt > item.UpdatedAt)
+                        Pushed.Add(item);
+                        if (Items.TryGetValue((item.Collection, item.Key), out var current)
+                            && (current.UpdatedAt > item.UpdatedAt || (GuardsProtectedNotes && IsUnmarkedUnprotect(current, item))))
                         {
                             results.Add(new SyncPushResult(item.Collection, item.Key, current.Revision, false, current));
                             continue;
@@ -226,6 +262,36 @@ internal sealed class FakeCloud : HttpMessageHandler
             default:
                 return Json(HttpStatusCode.NotFound, new ApiError("Nicht gefunden."));
         }
+    }
+
+    /// <summary>A live protected note that would become plain without the marker (a delete is not this rule's business).</summary>
+    private static bool IsUnmarkedUnprotect(SyncItemDto current, SyncItemDto item)
+    {
+        if (item.Collection != "notes" || current.IsDeleted || item.IsDeleted || !IsProtected(current.Data))
+        {
+            return false;
+        }
+
+        if (IsProtected(item.Data))
+        {
+            return false;
+        }
+
+        using var data = JsonDocument.Parse(item.Data!);
+        return !(data.RootElement.TryGetProperty("unprotected", out var marker) && marker.ValueKind == JsonValueKind.True);
+    }
+
+    private static bool IsProtected(string? data)
+    {
+        if (data is null)
+        {
+            return false;
+        }
+
+        using var document = JsonDocument.Parse(data);
+        var root = document.RootElement;
+        return (root.TryGetProperty("bytes", out var bytes) && bytes.ValueKind == JsonValueKind.String)
+               || (root.TryGetProperty("path", out var path) && path.GetString()?.EndsWith(".txts", StringComparison.OrdinalIgnoreCase) == true);
     }
 
     private static ApiError? Validate(SyncPushRequest push)

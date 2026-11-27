@@ -30,6 +30,15 @@ public sealed record NoteChange(string? OldPath, string? NewPath, bool ContentCh
 /// trash. When a note changed here since the last sync AND in the cloud, both stay: the cloud's version takes the name, this
 /// computer's is saved next to it as "Titel (Konflikt Gerätename).md" and goes up as a new note. A note that is open with
 /// unsaved changes is never touched: its change waits in the index until the editor has saved.
+///
+/// A protected note never turns into plain text by the way: only "Schutz aufheben" here (<see cref="Moved"/> with
+/// unprotected) sends its plain version with <c>"unprotected":true</c>, once (MatCloud refuses a plain version of a protected
+/// note without it and answers with the protected one). A plain version without the marker over a note that is protected here
+/// is either a stale version of a device that missed the protection (on an older cloud) or a later state of a note whose
+/// protection was removed on purpose on another computer while this one was away (the cloud keeps only the latest state of a
+/// note, so the marked push may never reach this computer). The protected file is then never written as plain text and never
+/// pushed back over the plain version: it keeps its encrypted bytes as "Titel (Konflikt Gerät).txts", a note of its own (the
+/// same key on every computer), and the plain version takes the note's key and name.
 /// Everything runs under <see cref="Gate"/>; the network calls are SyncService's. Nothing here logs a title or a text.
 /// </summary>
 internal static class NoteSync
@@ -125,7 +134,7 @@ internal static class NoteSync
                 }
 
                 var contentChanged = hash != note.Hash;
-                Add(Upsert(key, file, contentChanged ? Later(file.WriteTimeUtc, note.UpdatedAt) : Later(AppClock.UtcNow, note.UpdatedAt)));
+                Add(Upsert(key, file, contentChanged ? Later(file.WriteTimeUtc, note.UpdatedAt) : Later(AppClock.UtcNow, note.UpdatedAt), Unprotects(note, file.Relative)));
             }
 
             var fresh = files.Values.Where(file => !claimed.Contains(file.Relative)).ToList();
@@ -216,7 +225,10 @@ internal static class NoteSync
                 {
                     if (result.Current is { } current)
                     {
-                        Apply(index, current, changes);
+                        // Not older than the cloud's state and still refused: the cloud keeps it as it is (a protected note stays protected).
+                        // Even when that state is the one this computer synced last, the change here must not wait to be pushed again
+                        // forever: it goes next to the note as a conflict copy.
+                        Apply(index, current, changes, kept: current.UpdatedAt <= pushed.Item.UpdatedAt);
                     }
 
                     continue;
@@ -288,8 +300,11 @@ internal static class NoteSync
 
     // ---- what ThixNote tells ----
 
-    /// <summary>ThixNote moved a note (rename, protect, unprotect): it keeps its key in the cloud.</summary>
-    public static void Moved(string account, string oldPath, string newPath)
+    /// <summary>
+    /// ThixNote moved a note (rename, protect, unprotect): it keeps its key in the cloud. <paramref name="unprotected"/>: the
+    /// person removed the protection ("Schutz aufheben") – when the cloud has the note protected, its next push says so.
+    /// </summary>
+    public static void Moved(string account, string oldPath, string newPath, bool unprotected = false)
     {
         lock (Gate)
         {
@@ -308,6 +323,15 @@ internal static class NoteSync
 
             note.LocalPath = string.Equals(newRelative, note.Path, StringComparison.Ordinal) ? null : newRelative;
             note.SeenLength = -1;
+            if (IsEncrypted(newRelative))
+            {
+                note.Unprotected = false; // protected again before the removal went up
+            }
+            else if (unprotected && IsEncrypted(note.Path))
+            {
+                note.Unprotected = true;
+            }
+
             Save(index);
         }
     }
@@ -378,6 +402,11 @@ internal static class NoteSync
             index.Notes[item.Key] = note;
         }
 
+        if (pushed.Unprotected)
+        {
+            note.Unprotected = false; // the cloud has the plain note now: the marker goes with this one push only
+        }
+
         var here = note.LocalPath;
         note.Path = pushed.Here!;
         note.LocalPath = here is null || string.Equals(here, pushed.Here, StringComparison.Ordinal) ? null : here; // moved again meanwhile: that goes up next
@@ -391,14 +420,17 @@ internal static class NoteSync
         }
     }
 
-    /// <summary>One change of the cloud. A failure leaves it waiting in the index (tried again every round).</summary>
-    private static void Apply(SyncIndex index, SyncItemDto item, List<NoteChange> changes)
+    /// <summary>
+    /// One change of the cloud. A failure leaves it waiting in the index (tried again every round). <paramref name="kept"/>: the
+    /// cloud refused this computer's push and kept the item as it is (see <see cref="ApplyNote"/>).
+    /// </summary>
+    private static void Apply(SyncIndex index, SyncItemDto item, List<NoteChange> changes, bool kept = false)
     {
         try
         {
             var applied = item.Collection switch
             {
-                NotesCollection => ApplyNote(index, item, changes),
+                NotesCollection => ApplyNote(index, item, changes, kept),
                 FoldersCollection => ApplyFolder(index, item, changes),
                 _ => true, // another kind of item of ThixNote (a later version): not this version's business
             };
@@ -414,8 +446,12 @@ internal static class NoteSync
         }
     }
 
-    /// <summary>Applies one note; false when it has to wait (open with unsaved changes).</summary>
-    private static bool ApplyNote(SyncIndex index, SyncItemDto item, List<NoteChange> changes)
+    /// <summary>
+    /// Applies one note; false when it has to wait (open with unsaved changes). <paramref name="kept"/>: the cloud refused this
+    /// computer's push of the note and kept its state – even when that is the state synced here last, a change here is then a
+    /// conflict (it would otherwise go up again and be refused again every round).
+    /// </summary>
+    private static bool ApplyNote(SyncIndex index, SyncItemDto item, List<NoteChange> changes, bool kept = false)
     {
         var root = NotesRoot;
         index.Notes.TryGetValue(item.Key, out var note);
@@ -433,7 +469,7 @@ internal static class NoteSync
             }
 
             remoteHash = HashOf(data);
-            if (note is not null && string.Equals(note.Path, target, StringComparison.Ordinal) && note.Hash == remoteHash)
+            if (!kept && note is not null && string.Equals(note.Path, target, StringComparison.Ordinal) && note.Hash == remoteHash)
             {
                 note.UpdatedAt = Max(note.UpdatedAt, item.UpdatedAt); // what this computer pushed itself, or the same again
                 return true;
@@ -466,6 +502,12 @@ internal static class NoteSync
             }
 
             index.Notes.Remove(item.Key);
+            return true;
+        }
+
+        if (exists && IsUnmarkedUnprotect(here, data!))
+        {
+            KeepProtectedApart(index, item, data!, target!, remoteHash!, note, here, localHash!, changes);
             return true;
         }
 
@@ -565,6 +607,41 @@ internal static class NoteSync
         return true;
     }
 
+    /// <summary>
+    /// A plain version of a note that is protected here (a .txts) and does not say it was unprotected on purpose. This computer
+    /// cannot tell which of two it is: a stale plain version of a device that missed the protection (an older cloud took it), or
+    /// the person's own "Schutz aufheben" on another computer followed by a later edit, rename or save in the browser – the cloud
+    /// keeps only the latest state of a note, so a computer that was away never sees the one push with the marker.
+    /// </summary>
+    private static bool IsUnmarkedUnprotect(string here, NoteData data) =>
+        data.Bytes is null && data.Unprotected != true && IsEncrypted(here);
+
+    /// <summary>
+    /// The protected file is never turned into plain text and never pushed back over the plain version (that would undo a removal
+    /// of the protection on purpose): it keeps its encrypted bytes and goes next to the note as "Titel (Konflikt Gerät).txts", a
+    /// note of its own. The plain version takes the key and the name like any change of the cloud. The copy's key follows from
+    /// the note's key and the encrypted bytes, so every computer that held the same protected file makes the same one note of it.
+    /// </summary>
+    private static void KeepProtectedApart(SyncIndex index, SyncItemDto item, NoteData data, string target, string remoteHash, SyncedNote note, string here, string localHash, List<NoteChange> changes)
+    {
+        var root = NotesRoot;
+        var copy = ConflictCopy(root, here);
+        MoveFile(root, here, copy);
+        var copyKey = CopyKey(item.Key, localHash);
+        index.Notes[index.Notes.ContainsKey(copyKey) ? Guid.NewGuid().ToString("N") : copyKey] = new SyncedNote { LocalPath = copy };
+        changes.Add(new NoteChange(Full(root, here), Full(root, copy), false));
+
+        var place = FreePath(root, target, null);
+        Write(root, place, data, item.UpdatedAt, note, remoteHash);
+        SetSynced(note, target, place, remoteHash, item.UpdatedAt);
+        changes.Add(new NoteChange(null, Full(root, place), true));
+        Log.Info($"Sync: item {item.Key} came as plain text without the marker; the protected file is kept protected as a note of its own");
+    }
+
+    /// <summary>The key of the protected copy of a note: the same on every computer for the same note and the same encrypted bytes.</summary>
+    private static string CopyKey(string key, string hash) =>
+        new Guid(SHA256.HashData(Encoding.UTF8.GetBytes($"protected-copy|{key}|{hash}")).AsSpan(0, 16)).ToString("N");
+
     private static bool ApplyFolder(SyncIndex index, SyncItemDto item, List<NoteChange> changes)
     {
         var root = NotesRoot;
@@ -620,6 +697,7 @@ internal static class NoteSync
         note.LocalPath = string.Equals(here, path, StringComparison.Ordinal) ? null : here;
         note.Hash = hash;
         note.UpdatedAt = updatedAt;
+        note.Unprotected = false; // the cloud's state is the note's state now: a removal of the protection here is no more
     }
 
     /// <summary>Writes a note of the cloud (atomically) with the time of its change, and remembers the file as hashed.</summary>
@@ -678,7 +756,10 @@ internal static class NoteSync
         return Directory.EnumerateFiles(folder).FirstOrDefault(file => string.Equals(Path.GetFileName(file), name, StringComparison.OrdinalIgnoreCase)) ?? full;
     }
 
-    private static PendingItem? Upsert(string key, LocalFile file, DateTimeOffset updatedAt)
+    /// <summary>The push of this file says that the protection was removed on purpose (once, see <see cref="SyncedNote.Unprotected"/>).</summary>
+    private static bool Unprotects(SyncedNote note, string here) => note.Unprotected && IsEncrypted(note.Path) && !IsEncrypted(here);
+
+    private static PendingItem? Upsert(string key, LocalFile file, DateTimeOffset updatedAt, bool unprotected = false)
     {
         string data;
         string hash;
@@ -693,7 +774,7 @@ internal static class NoteSync
             else
             {
                 var text = File.ReadAllText(file.FullPath);
-                data = JsonSerializer.Serialize(new NoteData(file.Relative, text), CloudContract.Json);
+                data = JsonSerializer.Serialize(new NoteData(file.Relative, text, Unprotected: unprotected ? true : null), CloudContract.Json);
                 hash = Sha256(Encoding.UTF8.GetBytes(text));
             }
         }
@@ -714,7 +795,7 @@ internal static class NoteSync
 
         return new PendingItem(
             new SyncItemDto { Collection = NotesCollection, Key = key, Data = data, ContentHash = hash, UpdatedAt = updatedAt },
-            file.Relative, hash, file.Length, file.WriteTimeUtc);
+            file.Relative, hash, file.Length, file.WriteTimeUtc, unprotected && !IsEncrypted(file.Relative));
     }
 
     /// <summary>The hash of a note's file, read again only when its size or time changed.</summary>
@@ -896,8 +977,13 @@ internal static class NoteSync
     private sealed record LocalFile(string Relative, string FullPath, long Length, DateTime WriteTimeUtc);
 }
 
-/// <summary>One item to push, with what it was read from (path, hash, size, time) to confirm it afterwards.</summary>
-internal sealed record PendingItem(SyncItemDto Item, string? Here = null, string? Hash = null, long Length = -1, DateTime WriteTimeUtc = default);
+/// <summary>One item to push, with what it was read from (path, hash, size, time) to confirm it afterwards; <see cref="Unprotected"/>: it carries the marker.</summary>
+internal sealed record PendingItem(SyncItemDto Item, string? Here = null, string? Hash = null, long Length = -1, DateTime WriteTimeUtc = default, bool Unprotected = false);
 
-/// <summary>The data of a note in the cloud: its path and its text, or the encrypted bytes of a protected note (base64).</summary>
-internal sealed record NoteData(string Path, string? Content = null, string? Bytes = null);
+/// <summary>
+/// The data of a note in the cloud: its path and its text, or the encrypted bytes of a protected note (base64).
+/// <see cref="Unprotected"/> (<c>"unprotected":true</c>, left out otherwise) goes only with the one push of a plain note whose
+/// protection the person removed ("Schutz aufheben") while the cloud had it protected: MatCloud's Note module refuses a plain
+/// version of a protected note without it, and ThixNote never writes a protected file as plain text for a version without it.
+/// </summary>
+internal sealed record NoteData(string Path, string? Content = null, string? Bytes = null, bool? Unprotected = null);

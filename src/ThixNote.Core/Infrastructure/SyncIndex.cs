@@ -84,6 +84,13 @@ internal sealed class SyncedNote
 
     public string SeenHash { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The person removed the protection here ("Schutz aufheben") while the cloud has the note protected: its next push carries
+    /// the marker <c>"unprotected":true</c> (once – cleared when the cloud took it, or took another state of the note).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Unprotected { get; set; }
+
     /// <summary>Where the note is here (<see cref="LocalPath"/> or <see cref="Path"/>).</summary>
     [JsonIgnore]
     public string Here => LocalPath ?? Path;
