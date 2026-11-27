@@ -24,7 +24,10 @@ setup, update and tests; MatDesign (`../MatDesign`, docs/DESKTOP.md) holds the r
 - `dotnet build ThixNote.slnx` – expected: 0 warnings, 0 errors.
 - `dotnet test tests/ThixNote.Tests` – business layer (notes, encryption, settings, policies, QuickNote takeover), the sync
   with MatCloud against `FakeCloud` (in memory: two computers = two data folders, the sign-in with password and in the browser;
-  `GuardsProtectedNotes` = the Note module's rule for protected notes, off = an older cloud; `HideChangesAbove` = a change that
+  `GuardsProtectedNotes` = the Note module's rule for protected notes, off = an older cloud; `CarriesUnprotectMarker` = the
+  module keeps `"unprotected":true` on the later plain states of an unprotected note (a plain push over a plain note carrying
+  it is stored with it, every other property as pushed, written as MatCloud writes it; the marker may go beyond the length of an
+  item by its own length, as on MatCloud), off = a cloud that keeps it with the one push only; `HideChangesAbove` = a change that
   arrives between a computer's pull and its push; `SaveInBrowser` = a save on the cloud's pages), the
   installation in test locations (Windows), the update rules, and the **UI rendered headless** with Avalonia + Skia
   (`UiTests`: keyboard flows, the narrow window, the snapshots; `THIXNOTE_SCREENSHOTS=<folder>` keeps the pictures – look at
@@ -140,13 +143,17 @@ tests/ThixNote.Tests    see above (FakeCloud = MatCloud in memory, SyncTests)
   `"unprotected":true` in its data (once). MatCloud's Note module refuses a plain version of a protected note without it and
   answers with the protected one: the device's edit becomes a conflict copy, the protected note comes back – also when that
   protected state is the one synced here last (`ConfirmPushed` → `ApplyNote(kept: true)`; a refused push that is not older than
-  the cloud's state never waits to be pushed and refused again every round). A plain version
-  without the marker over a `.txts` here (a stale version on an older cloud, or a later edit / rename / browser save after a
-  removal on purpose whose one marked push this computer missed – the cloud keeps only the latest state) is never written into
+  the cloud's state never waits to be pushed and refused again every round). The module keeps the marker on the later plain
+  states of the note (edits, renames, saves in the browser) until it is protected again or deleted, so a computer that was away
+  during the removal still gets it marked and applies it like any change: the `.txts` unchanged here becomes the plain note,
+  one changed here too stays protected as "Titel (Konflikt Gerät).txts" (a conflict), one deleted here comes back plain, one
+  open with unsaved changes waits. ThixNote's hash of a note covers only its content, so the marker in the cloud's data
+  changes no comparison. A plain version
+  without the marker over a `.txts` here (a stale version on an older cloud, or – on a cloud that keeps the marker with the one
+  push only – a later state after a removal on purpose this computer missed) is never written into
   the `.txts` and the `.txts` is never pushed back over it (that would undo the removal): the plain version takes key and name,
   the `.txts` keeps its bytes as "Titel (Konflikt Gerät).txts", a note whose key follows from the note's key and the bytes (one
-  note, however many computers held it). Limit: until MatCloud keeps the marker on the later plain states of such a note, a
-  computer that missed the removal keeps that old protected copy as an extra note.
+  note, however many computers held it).
 
 ## Versioning, branches, CI
 

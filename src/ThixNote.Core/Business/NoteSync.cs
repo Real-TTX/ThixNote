@@ -33,12 +33,14 @@ public sealed record NoteChange(string? OldPath, string? NewPath, bool ContentCh
 ///
 /// A protected note never turns into plain text by the way: only "Schutz aufheben" here (<see cref="Moved"/> with
 /// unprotected) sends its plain version with <c>"unprotected":true</c>, once (MatCloud refuses a plain version of a protected
-/// note without it and answers with the protected one). A plain version without the marker over a note that is protected here
-/// is either a stale version of a device that missed the protection (on an older cloud) or a later state of a note whose
-/// protection was removed on purpose on another computer while this one was away (the cloud keeps only the latest state of a
-/// note, so the marked push may never reach this computer). The protected file is then never written as plain text and never
-/// pushed back over the plain version: it keeps its encrypted bytes as "Titel (Konflikt Gerät).txts", a note of its own (the
-/// same key on every computer), and the plain version takes the note's key and name.
+/// note without it and answers with the protected one, and keeps the marker on the later plain states of the note until it is
+/// protected again or deleted – so a computer that was away still sees that the removal was on purpose and applies it like any
+/// change). A plain version without the marker over a note that is protected here is either a stale version of a device that
+/// missed the protection (on an older cloud) or, on a cloud that keeps the marker with the one push only, a later state of a
+/// note whose protection was removed on purpose on another computer while this one was away. The protected file is then never
+/// written as plain text and never pushed back over the plain version: it keeps its encrypted bytes as
+/// "Titel (Konflikt Gerät).txts", a note of its own (the same key on every computer), and the plain version takes the note's
+/// key and name.
 /// Everything runs under <see cref="Gate"/>; the network calls are SyncService's. Nothing here logs a title or a text.
 /// </summary>
 internal static class NoteSync
@@ -610,8 +612,8 @@ internal static class NoteSync
     /// <summary>
     /// A plain version of a note that is protected here (a .txts) and does not say it was unprotected on purpose. This computer
     /// cannot tell which of two it is: a stale plain version of a device that missed the protection (an older cloud took it), or
-    /// the person's own "Schutz aufheben" on another computer followed by a later edit, rename or save in the browser – the cloud
-    /// keeps only the latest state of a note, so a computer that was away never sees the one push with the marker.
+    /// the person's own "Schutz aufheben" on another computer followed by a later edit, rename or save in the browser on a cloud
+    /// that keeps the marker with the one push only (MatCloud keeps it on the later plain states: then this is not the case).
     /// </summary>
     private static bool IsUnmarkedUnprotect(string here, NoteData data) =>
         data.Bytes is null && data.Unprotected != true && IsEncrypted(here);
@@ -984,6 +986,7 @@ internal sealed record PendingItem(SyncItemDto Item, string? Here = null, string
 /// The data of a note in the cloud: its path and its text, or the encrypted bytes of a protected note (base64).
 /// <see cref="Unprotected"/> (<c>"unprotected":true</c>, left out otherwise) goes only with the one push of a plain note whose
 /// protection the person removed ("Schutz aufheben") while the cloud had it protected: MatCloud's Note module refuses a plain
-/// version of a protected note without it, and ThixNote never writes a protected file as plain text for a version without it.
+/// version of a protected note without it (and keeps it on the note's later plain states), and ThixNote never writes a
+/// protected file as plain text for a version without it.
 /// </summary>
 internal sealed record NoteData(string Path, string? Content = null, string? Bytes = null, bool? Unprotected = null);

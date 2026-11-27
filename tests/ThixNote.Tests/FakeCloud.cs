@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Encodings.Web;
+using System.Text.Json.Nodes;
 using MatCloud.Contract;
 
 namespace ThixNote.Tests;
@@ -8,14 +10,18 @@ namespace ThixNote.Tests;
 /// <summary>
 /// MatCloud in memory, after the rules of <see cref="CloudContract"/> and <see cref="SyncContract"/>: the sign-in with a
 /// password and in the browser (a code that a test approves or denies), the account, and the general sync of ThixNote – one
-/// revision counter, tombstones, the last writer wins by UpdatedAt (a delete too), and the rule of MatCloud's Note module that
-/// a protected note turns plain only with <c>"unprotected":true</c> (<see cref="GuardsProtectedNotes"/>). Enough to test the desktop side.
+/// revision counter, tombstones, the last writer wins by UpdatedAt (a delete too), and the rules of MatCloud's Note module: a
+/// protected note turns plain only with <c>"unprotected":true</c> (<see cref="GuardsProtectedNotes"/>), and that marker stays on
+/// the later plain states of the note (<see cref="CarriesUnprotectMarker"/>). Enough to test the desktop side.
 /// </summary>
 internal sealed class FakeCloud : HttpMessageHandler
 {
     public const string UserName = "anna";
     public const string DisplayName = "Anna Berger";
     public const string Password = "geheim-123";
+
+    /// <summary>How MatCloud's Note module writes the data it carries the marker into.</summary>
+    private static readonly JsonSerializerOptions StoredJson = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private readonly object _gate = new();
     private readonly Dictionary<string, (long Id, string Name)> _devices = [];
@@ -37,6 +43,13 @@ internal sealed class FakeCloud : HttpMessageHandler
     /// device gets the protected note as <see cref="SyncPushResult.Current"/>, as for a newer change. False = a cloud before that rule.
     /// </summary>
     public bool GuardsProtectedNotes { get; set; } = true;
+
+    /// <summary>
+    /// A plain version without the marker over a plain note that carries <c>"unprotected":true</c> is stored with the marker added
+    /// (every other property as pushed): a computer that missed the removal of the protection still sees it was on purpose. The
+    /// marker goes when the note is protected again or deleted. False = a cloud that keeps the marker only with the one push.
+    /// </summary>
+    public bool CarriesUnprotectMarker { get; set; } = true;
 
     /// <summary>A pull sees nothing above this revision (a change that reached the cloud between a device's pull and its push).</summary>
     public long? HideChangesAbove { get; set; }
@@ -86,16 +99,18 @@ internal sealed class FakeCloud : HttpMessageHandler
 
     /// <summary>
     /// The person saves a plain note on the pages of the cloud (MatCloud's Note module): its new data goes in like a change of a
-    /// device, without <c>"unprotected"</c> – the pages never remove a protection, they only edit a note that is plain already.
+    /// device, without <c>"unprotected"</c> – the pages never remove a protection, they only edit a note that is plain already
+    /// (the cloud carries a marker the note has, as for any writer).
     /// </summary>
     public void SaveInBrowser(string key, string path, string content)
     {
         lock (_gate)
         {
             var current = Items[("notes", key)];
+            var saved = current with { Data = JsonSerializer.Serialize(new { path, content }, CloudContract.Json) };
             Items[("notes", key)] = current with
             {
-                Data = JsonSerializer.Serialize(new { path, content }, CloudContract.Json),
+                Data = CarriesUnprotectMarker ? WithCarriedMarker(current, saved) : saved.Data,
                 ContentHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(content))),
                 UpdatedAt = current.UpdatedAt.AddSeconds(1),
                 Source = "Browser",
@@ -246,7 +261,7 @@ internal sealed class FakeCloud : HttpMessageHandler
 
                         var stored = item with
                         {
-                            Data = item.IsDeleted ? null : item.Data,
+                            Data = item.IsDeleted ? null : CarriesUnprotectMarker ? WithCarriedMarker(current, item) : item.Data,
                             ContentHash = item.IsDeleted ? null : item.ContentHash,
                             Source = device.Name,
                             Revision = ++_revision,
@@ -277,8 +292,41 @@ internal sealed class FakeCloud : HttpMessageHandler
             return false;
         }
 
-        using var data = JsonDocument.Parse(item.Data!);
-        return !(data.RootElement.TryGetProperty("unprotected", out var marker) && marker.ValueKind == JsonValueKind.True);
+        return !HasMarker(item.Data);
+    }
+
+    /// <summary>
+    /// The data to store: a live plain version without the marker over a live plain note that carries it gets <c>"unprotected":true</c>
+    /// added, every other property kept as pushed (the content hash is the content's and stays), written as MatCloud writes it (the
+    /// name in any case, umlauts and &lt; &gt; unescaped). The marker may take the data over the length a device may push, by its own
+    /// length (as MatCloud's MarkerAllowance: dropped there, no later push would carry it again); beyond that, and anything else, as pushed.
+    /// </summary>
+    private static string? WithCarriedMarker(SyncItemDto? current, SyncItemDto item)
+    {
+        if (item.Collection != "notes" || current is null || current.IsDeleted || item.IsDeleted || item.Data is null
+            || IsProtected(current.Data) || IsProtected(item.Data) || !HasMarker(current.Data) || HasMarker(item.Data))
+        {
+            return item.Data;
+        }
+
+        var data = JsonNode.Parse(item.Data, new JsonNodeOptions { PropertyNameCaseInsensitive = true })!.AsObject();
+        data["unprotected"] = true;
+        var marked = data.ToJsonString(StoredJson);
+        return marked.Length <= SyncContract.MaxDataLength + ",\"unprotected\":true".Length ? marked : item.Data;
+    }
+
+    /// <summary>The note carries <c>"unprotected":true</c>, the name in any case (as MatCloud reads it; the last one counts).</summary>
+    private static bool HasMarker(string? data)
+    {
+        if (data is null)
+        {
+            return false;
+        }
+
+        using var document = JsonDocument.Parse(data);
+        return document.RootElement.EnumerateObject()
+            .LastOrDefault(property => string.Equals(property.Name, "unprotected", StringComparison.OrdinalIgnoreCase))
+            .Value.ValueKind == JsonValueKind.True;
     }
 
     private static bool IsProtected(string? data)

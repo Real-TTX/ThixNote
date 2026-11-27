@@ -355,50 +355,74 @@ public sealed class SyncTests : IDisposable
     [InlineData("edit")]
     [InlineData("rename")]
     [InlineData("browser")]
-    public async Task A_removal_of_the_protection_that_a_computer_missed_is_not_undone(string after)
+    public async Task A_removal_of_the_protection_that_a_computer_missed_reaches_it_with_the_marker_the_cloud_keeps(string after)
     {
-        var key = await ProtectedOnBothAsync(laptopHasIt: true);
-        var encrypted = File.ReadAllBytes(_anna.PathOf("Titel.txts"));
-        _laptop.Use();
-        var secret = _laptop.PathOf("Titel.txts");
-        NoteContent.Unlock(secret, Password);
-        NoteContent.Unprotect(secret);
-        await _laptop.SyncAsync();
+        var (key, _, path, text) = await UnprotectedOnLaptopAndChangedAgainAsync(after);
 
-        // Anna's computer is away while the note changes once more: the cloud keeps only that latest state, without the marker.
-        var (path, text) = after switch
-        {
-            "edit" => ("Titel.md", "nicht mehr geheim"),
-            "rename" => ("Notiz.md", SecretText),
-            _ => ("Titel.md", "im Browser geändert"),
-        };
+        // The cloud kept the marker on the later plain state: only the one push after "Schutz aufheben" carried it.
+        AssertPlain(_cloud.Items[("notes", key)], path, text, marked: true);
+        Assert.Single(_cloud.Pushed, item => item.Data?.Contains("unprotected", StringComparison.Ordinal) == true);
+
+        // Anna's computer takes the removal as it was meant: the plain note with the latest text, no protected copy.
+        await _anna.SyncAsync();
+        Assert.Equal(text, _anna.Read(path));
+        Assert.Empty(Directory.GetFiles(_anna.Notes, "*.txts"));
+        Assert.Single(Directory.GetFiles(_anna.Notes));
+        await _laptop.SyncAsync();
+        Assert.Equal(text, _laptop.Read(path));
+        Assert.Empty(Directory.GetFiles(_laptop.Notes, "*.txts"));
+        Assert.Single(Directory.GetFiles(_laptop.Notes));
+        Assert.Equal(key, Assert.Single(_cloud.Notes).Key);
+        await AssertSettledAsync();
+
+        // A computer that comes later takes the plain note like any other.
+        var office = new Device(Path.Combine(_data.Folder, "buero"), "BUERO");
+        await office.ConnectAsync();
+        await office.SyncAsync();
+        Assert.Equal(text, office.Read(path));
+        Assert.Single(Directory.GetFiles(office.Notes));
+
+        // Protected again: the bytes go up as they are, the marker is gone, and a stale plain version is refused again.
+        _anna.Use();
+        var secret = NoteContent.Protect(_anna.PathOf(path), text, Password);
+        NoteContent.Lock(secret);
+        await _anna.SyncAsync();
+        var protectedPath = Path.ChangeExtension(path, ".txts");
+        AssertProtected(_cloud.Items[("notes", key)], File.ReadAllBytes(secret), protectedPath);
+        Assert.DoesNotContain("unprotected", _cloud.Items[("notes", key)].Data, StringComparison.Ordinal);
+
         _laptop.Use();
-        switch (after)
+        _cloud.HideChangesAbove = _cloud.Revision - 1;
+        NoteContent.Write(_laptop.PathOf(path), "veraltet");
+        try
         {
-            case "edit":
-                NoteContent.Write(_laptop.PathOf("Titel.md"), text);
-                break;
-            case "rename":
-                NoteLibrary.Rename(_laptop.PathOf("Titel.md"), "Notiz");
-                break;
-            default:
-                _cloud.SaveInBrowser(key, path, text);
-                break;
+            await _laptop.SyncAsync();
+        }
+        finally
+        {
+            _cloud.HideChangesAbove = null;
         }
 
-        await _laptop.SyncAsync();
-        Assert.DoesNotContain("unprotected", _cloud.Items[("notes", key)].Data, StringComparison.Ordinal);
+        AssertProtected(_cloud.Items[("notes", key)], File.ReadAllBytes(secret), protectedPath);
+        Assert.Equal(File.ReadAllBytes(secret), File.ReadAllBytes(_laptop.PathOf(protectedPath)));
+    }
+
+    [Theory]
+    [InlineData("edit")]
+    [InlineData("rename")]
+    [InlineData("browser")]
+    public async Task On_a_cloud_that_drops_the_marker_a_removal_of_the_protection_that_a_computer_missed_is_not_undone(string after)
+    {
+        _cloud.CarriesUnprotectMarker = false;
+        var (key, encrypted, path, text) = await UnprotectedOnLaptopAndChangedAgainAsync(after);
+        AssertPlain(_cloud.Items[("notes", key)], path, text);
 
         // Anna's computer takes the plain note; its protected file is not pushed back, it stays protected as a note of its own.
         await _anna.SyncAsync();
         Assert.Equal(text, _anna.Read(path));
         Assert.False(File.Exists(_anna.PathOf("Titel.txts")));
         Assert.Equal(encrypted, File.ReadAllBytes(_anna.PathOf(ProtectedCopy)));
-        using (var data = JsonDocument.Parse(_cloud.Items[("notes", key)].Data!))
-        {
-            Assert.Equal(path, data.RootElement.GetProperty("path").GetString());
-            Assert.Equal(text, data.RootElement.GetProperty("content").GetString());
-        }
+        AssertPlain(_cloud.Items[("notes", key)], path, text);
 
         // The laptop keeps the plain note as the person left it.
         await _laptop.SyncAsync();
@@ -407,6 +431,112 @@ public sealed class SyncTests : IDisposable
         Assert.Equal(encrypted, File.ReadAllBytes(_laptop.PathOf(ProtectedCopy)));
         Assert.Equal(2, _cloud.Notes.Count);
         await AssertSettledAsync();
+    }
+
+    [Fact]
+    public async Task A_removal_of_the_protection_that_a_computer_missed_reaches_it_also_for_a_note_as_long_as_an_item_may_be()
+    {
+        var key = await ProtectedOnBothAsync(laptopHasIt: true);
+        _laptop.Use();
+        var secret = _laptop.PathOf("Titel.txts");
+        NoteContent.Unlock(secret, Password);
+        NoteContent.Unprotect(secret);
+        await _laptop.SyncAsync();
+        AssertPlain(_cloud.Items[("notes", key)], "Titel.md", SecretText, marked: true);
+
+        // The laptop makes the note as long as an item may be: the cloud keeps the marker beside it all the same.
+        var empty = JsonSerializer.Serialize(new { path = "Titel.md", content = "" }, CloudContract.Json).Length;
+        var text = new string('x', SyncContract.MaxDataLength - empty);
+        NoteContent.Write(_laptop.PathOf("Titel.md"), text);
+        await _laptop.SyncAsync();
+        AssertPlain(_cloud.Items[("notes", key)], "Titel.md", text, marked: true);
+
+        // Anna's computer, away all the time, takes the removal: no protected copy.
+        await _anna.SyncAsync();
+        Assert.Equal(text, _anna.Read("Titel.md"));
+        Assert.False(File.Exists(_anna.PathOf("Titel.txts")));
+        Assert.False(File.Exists(_anna.PathOf(ProtectedCopy)));
+        Assert.Single(_cloud.Notes);
+        await AssertSettledAsync();
+    }
+
+    [Theory]
+    [InlineData("changed")]
+    [InlineData("deleted")]
+    [InlineData("open")]
+    public async Task A_removal_of_the_protection_that_a_computer_missed_meets_what_it_did_with_the_protected_note(string here)
+    {
+        // Anna's computer, away, did something with its protected note while the laptop removed the protection and edited the note.
+        var key = await ProtectedOnBothAsync(laptopHasIt: true);
+        _anna.Use();
+        var secret = _anna.PathOf("Titel.txts");
+        var encrypted = File.ReadAllBytes(secret);
+        switch (here)
+        {
+            case "changed":
+                NoteContent.Unlock(secret, Password);
+                NoteContent.Write(secret, "Neuer geheimer Text");
+                NoteContent.Lock(secret);
+                break;
+            case "deleted":
+                NoteLibrary.MoveToTrash(secret);
+                break;
+            default:
+                SyncService.SetUnsavedChanges(secret, true);
+                break;
+        }
+
+        var changed = here == "changed" ? File.ReadAllBytes(secret) : null;
+        _laptop.Use();
+        var unprotect = _laptop.PathOf("Titel.txts");
+        NoteContent.Unlock(unprotect, Password);
+        NoteContent.Unprotect(unprotect);
+        await _laptop.SyncAsync();
+        NoteContent.Write(_laptop.PathOf("Titel.md"), "nicht mehr geheim");
+        await _laptop.SyncAsync();
+        AssertPlain(_cloud.Items[("notes", key)], "Titel.md", "nicht mehr geheim", marked: true);
+
+        await _anna.SyncAsync();
+        switch (here)
+        {
+            case "changed":
+                // Changed on both sides: the plain version takes the name, Anna's change stays protected next to it.
+                Assert.Equal("nicht mehr geheim", _anna.Read("Titel.md"));
+                Assert.Equal(changed, File.ReadAllBytes(_anna.PathOf(ProtectedCopy)));
+                Assert.False(File.Exists(secret));
+                AssertProtected(Assert.Single(_cloud.Notes, item => item.Key != key), changed!, ProtectedCopy);
+                Assert.DoesNotContain(_cloud.Pushed, item => item.Data?.Contains("Neuer geheimer", StringComparison.Ordinal) == true);
+                _anna.Use();
+                Assert.Equal("Neuer geheimer Text", NoteContent.Unlock(_anna.PathOf(ProtectedCopy), Password));
+                NoteContent.Lock(_anna.PathOf(ProtectedCopy));
+                await _laptop.SyncAsync();
+                Assert.Equal(changed, File.ReadAllBytes(_laptop.PathOf(ProtectedCopy)));
+                Assert.Equal(2, _cloud.Notes.Count);
+                break;
+            case "deleted":
+                // Deleted here, changed there: the note comes back as it is now, plain.
+                Assert.Equal("nicht mehr geheim", _anna.Read("Titel.md"));
+                Assert.Single(Directory.GetFiles(_anna.Notes));
+                Assert.Equal(key, Assert.Single(_cloud.Notes).Key);
+                break;
+            default:
+                // Open with unsaved changes: not touched; closed without a change, the removal comes as it was meant.
+                Assert.Equal(encrypted, File.ReadAllBytes(secret));
+                Assert.False(File.Exists(_anna.PathOf("Titel.md")));
+                SyncService.SetUnsavedChanges(secret, false);
+                await _anna.SyncAsync();
+                Assert.Equal("nicht mehr geheim", _anna.Read("Titel.md"));
+                Assert.Single(Directory.GetFiles(_anna.Notes));
+                Assert.Equal(key, Assert.Single(_cloud.Notes).Key);
+                break;
+        }
+
+        await AssertSettledAsync();
+        if (here != "changed")
+        {
+            Assert.Empty(Directory.GetFiles(_anna.Notes, "*.txts"));
+            Assert.Empty(Directory.GetFiles(_laptop.Notes, "*.txts"));
+        }
     }
 
     [Fact]
@@ -509,6 +639,57 @@ public sealed class SyncTests : IDisposable
         {
             _cloud.HideChangesAbove = null;
         }
+    }
+
+    /// <summary>
+    /// The note protected on both computers; the laptop removes the protection ("Schutz aufheben", synced) and then, while Anna's
+    /// computer is away, the note changes once more (<paramref name="after"/>: edit, rename on the laptop or a save in the
+    /// browser). Returns the key, Anna's encrypted bytes, and the path and text of the note now.
+    /// </summary>
+    private async Task<(string Key, byte[] Encrypted, string Path, string Text)> UnprotectedOnLaptopAndChangedAgainAsync(string after)
+    {
+        var key = await ProtectedOnBothAsync(laptopHasIt: true);
+        var encrypted = File.ReadAllBytes(_anna.PathOf("Titel.txts"));
+        _laptop.Use();
+        var secret = _laptop.PathOf("Titel.txts");
+        NoteContent.Unlock(secret, Password);
+        NoteContent.Unprotect(secret);
+        await _laptop.SyncAsync();
+        AssertPlain(_cloud.Items[("notes", key)], "Titel.md", SecretText, marked: true);
+
+        var (path, text) = after switch
+        {
+            "edit" => ("Titel.md", "nicht mehr geheim"),
+            "rename" => ("Notiz.md", SecretText),
+            _ => ("Titel.md", "im Browser geändert"),
+        };
+        _laptop.Use();
+        switch (after)
+        {
+            case "edit":
+                NoteContent.Write(_laptop.PathOf("Titel.md"), text);
+                break;
+            case "rename":
+                NoteLibrary.Rename(_laptop.PathOf("Titel.md"), "Notiz");
+                break;
+            default:
+                _cloud.SaveInBrowser(key, path, text);
+                break;
+        }
+
+        await _laptop.SyncAsync();
+        return (key, encrypted, path, text);
+    }
+
+    /// <summary>A live plain note in the cloud: path, text, no bytes, and the marker only when <paramref name="marked"/>.</summary>
+    private static void AssertPlain(SyncItemDto item, string path, string text, bool marked = false)
+    {
+        Assert.False(item.IsDeleted);
+        using var data = JsonDocument.Parse(item.Data!);
+        Assert.Equal(path, data.RootElement.GetProperty("path").GetString());
+        Assert.Equal(text, data.RootElement.GetProperty("content").GetString());
+        Assert.False(data.RootElement.TryGetProperty("bytes", out _));
+        Assert.Equal(marked, data.RootElement.TryGetProperty("unprotected", out var marker) && marker.ValueKind == JsonValueKind.True);
     }
 
     private static void AssertProtected(SyncItemDto item, byte[] encrypted, string path = "Titel.txts")
